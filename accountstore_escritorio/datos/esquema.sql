@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS cuentas (
 CREATE TABLE IF NOT EXISTS clientes (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre    TEXT    NOT NULL CHECK (length(trim(nombre)) >= 3),
-    telefono  TEXT    NOT NULL UNIQUE,     -- el mismo cliente no se carga dos veces
+    telefono  TEXT    NOT NULL UNIQUE      -- el mismo cliente no se carga dos veces
+                      CHECK (telefono GLOB '+[0-9]*'),   -- formato internacional: +595981123456
     correo    TEXT
 );
 

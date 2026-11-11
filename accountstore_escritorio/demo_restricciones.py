@@ -21,7 +21,9 @@ INTENTOS = [
      "INSERT INTO suscripciones (cliente_id, cuenta_id, perfiles, fecha_inicio, vencimiento) "
      "VALUES (?, ?, ?, ?, ?)", (1, 1, 1, "2026-11-01", "2026-10-01")),
     ("Cliente con un teléfono que ya existe (UNIQUE)",
-     "INSERT INTO clientes (nombre, telefono) VALUES (?, ?)", ("Cliente Repetido", "0981111222")),
+     "INSERT INTO clientes (nombre, telefono) VALUES (?, ?)", ("Cliente Repetido", "+595981111222")),
+    ("Teléfono sin el código de país (CHECK telefono GLOB '+[0-9]*')",
+     "INSERT INTO clientes (nombre, telefono) VALUES (?, ?)", ("Cliente Sin Codigo", "0981999999")),
     ("Pago con monto negativo (CHECK monto > 0)",
      "INSERT INTO pagos (suscripcion_id, usuario_id, fecha, concepto, meses, monto) "
      "VALUES (?, ?, ?, ?, ?, ?)", (1, 1, "2026-11-01", "VENTA", 1, -5000)),

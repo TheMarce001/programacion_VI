@@ -36,13 +36,15 @@ CUENTAS = [
 ]
 
 CLIENTES = [
-    ("Ana Gómez", "0981111222", "ana.gomez@example.com"),
-    ("Luis Martínez", "0982333444", None),
-    ("Carmen Ortiz", "0971555666", None),
-    ("Diego Ramírez", "0991777888", "diego.ramirez@example.com"),
-    ("Sofía Acosta", "0961999000", None),
-    ("Rosa Cáceres", "0983246810", None),
-    ("Jorge Villalba", "0985123456", None),
+    # Teléfonos en formato internacional (+código de país)
+    ("Ana Gómez", "+595981111222", "ana.gomez@example.com"),
+    ("Luis Martínez", "+595982333444", None),
+    ("Carmen Ortiz", "+595971555666", None),
+    ("Diego Ramírez", "+595991777888", "diego.ramirez@example.com"),
+    ("Sofía Acosta", "+595961999000", None),
+    ("Rosa Cáceres", "+595983246810", None),
+    ("Jorge Villalba", "+595985123456", None),
+    ("Martín Ferreyra", "+5491123456789", "martin.ferreyra@example.com"),   # cliente de Argentina
 ]
 
 VENTAS = [

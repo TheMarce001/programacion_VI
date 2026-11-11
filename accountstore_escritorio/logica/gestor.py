@@ -25,6 +25,13 @@ def _error_de_base(error, si_repetido):
     return ErrorValidacion(f"La base de datos rechazó los datos ({texto}).")
 
 
+def _texto_busqueda(texto):
+    """Si se busca un número escrito como 0981..., se quita el 0 inicial para
+    que coincida con el teléfono guardado en formato internacional (+595981...)."""
+    texto = (texto or "").strip()
+    return texto.lstrip("0") if texto.isdigit() else texto
+
+
 class Gestor:
     def __init__(self, repositorio):
         self.repo = repositorio
@@ -60,12 +67,12 @@ class Gestor:
     # ============================================================= clientes
     def listar_clientes(self, texto=""):
         self._exigir_sesion()
-        return [dict(fila) for fila in self.repo.listar_clientes(texto.strip())]
+        return [dict(fila) for fila in self.repo.listar_clientes(_texto_busqueda(texto))]
 
-    def registrar_cliente(self, nombre, telefono, correo):
+    def registrar_cliente(self, nombre, telefono, correo, pais=reglas.PAIS_POR_DEFECTO):
         exigir_permiso(self.usuario, "gestionar_clientes")
         nombre = reglas.validar_nombre(nombre, "El nombre del cliente")
-        telefono = reglas.normalizar_telefono(telefono)
+        telefono = reglas.normalizar_telefono(telefono, pais)
         correo = reglas.validar_correo(correo)
         try:
             return self.repo.insertar_cliente(nombre, telefono, correo)
@@ -134,7 +141,7 @@ class Gestor:
         self._exigir_sesion()
         hoy = hoy or date.today()
         resultado = []
-        for fila in self.repo.listar_suscripciones(texto.strip()):
+        for fila in self.repo.listar_suscripciones(_texto_busqueda(texto)):
             s = dict(fila)
             s["fecha_inicio"] = date.fromisoformat(s["fecha_inicio"])
             s["vencimiento"] = date.fromisoformat(s["vencimiento"])

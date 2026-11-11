@@ -143,6 +143,16 @@ class PruebasGestor(unittest.TestCase):
             self.gestor.registrar_usuario("nuevo", "Usuario Nuevo", "ADMIN", "Clave2026", "Clave2026")
 
     # ------------------------------------------------- restricciones de la base
+    def test_cliente_extranjero(self):
+        self.gestor.iniciar_sesion("cobranza", "Cobra2026!")
+        self.gestor.registrar_cliente("Lucía Pereira", "099 555 777", "", "Uruguay")
+        self.assertEqual(self._cliente("Lucía Pereira")["telefono"], "+59899555777")
+
+    def test_buscar_telefono_escrito_con_cero(self):
+        self.gestor.iniciar_sesion("admin", "Admin2026!")
+        encontrados = self.gestor.listar_clientes("0981111222")
+        self.assertEqual([c["nombre"] for c in encontrados], ["Ana Gómez"])
+
     def test_telefono_repetido_lo_rechaza_la_base(self):
         self.gestor.iniciar_sesion("admin", "Admin2026!")
         antes = self._contar("clientes")

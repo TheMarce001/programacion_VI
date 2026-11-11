@@ -4,7 +4,7 @@ Cada paso indica qué **indicador de la rúbrica** cubre. Conviene ensayarlo 2 o
 
 **La noche anterior (en la notebook con la que vas a presentar)**
 - Copiar el proyecto y ejecutar `python main.py` una vez, para comprobar que abre. Ejecutar también
-  `python -m unittest -v`: tienen que pasar las 32 pruebas.
+  `python -m unittest -v`: tienen que pasar las 35 pruebas.
 - Llevar una copia de respaldo (pendrive y GitHub) por si falla la notebook.
 - Recorrer este guion completo al menos una vez, en voz alta y con el reloj.
 
@@ -57,8 +57,9 @@ Con el [INFORME](INFORME.md) abierto:
 13. Abrir `datos/esquema.sql`: PK `id` en cada tabla y FK con `REFERENCES … ON DELETE RESTRICT`.
     Mencionar `PRAGMA foreign_keys = ON` en `datos/conexion.py` (4.1).
 14. **Clientes → eliminar a Ana Gómez** → rechazado porque tiene suscripciones (FK).
-    **Nuevo cliente** con el teléfono `0981 111 222` → rechazado porque ya existe (UNIQUE) (4.2).
-15. En la terminal: `python demo_restricciones.py` → 7 intentos de SQL directo, **todos rechazados** por
+    **Nuevo cliente** de Paraguay con el teléfono `0981 111 222` → rechazado porque ya existe (UNIQUE) (4.2).
+    Después, un cliente de **Uruguay** con `099 555 777` → se guarda como `+59899555777` (RN8).
+15. En la terminal: `python demo_restricciones.py` → 8 intentos de SQL directo, **todos rechazados** por
     SQLite (4.2).
 16. **Cerrar el programa** (botón X). Volver a abrir con `python main.py`, ingresar y mostrar que la
     venta de Jorge Villalba sigue ahí (4.3).
@@ -77,7 +78,7 @@ Con el [INFORME](INFORME.md) abierto:
 
 ## Parte 6 — IA, estado y planificación (1 min) · indicadores 6.3, 7.1 y 7.2
 
-21. Uso de IA y cómo lo verifiqué: `python -m unittest -v` → **32 pruebas OK** (§6).
+21. Uso de IA y cómo lo verifiqué: `python -m unittest -v` → **35 pruebas OK** (§6).
 22. Funcionalidades terminadas, parciales y pendientes, y plan con fechas (§7).
 
 ---
@@ -98,6 +99,7 @@ estas antes, a mano, y comprobar cada una ejecutando el programa y `python -m un
 | Agregar una columna a la lista | `interfaz/suscripciones.py` → `COLUMNAS` y la tupla de valores en `actualizar()` |
 | Nuevo servicio con otra capacidad | desde la sección **Cuentas y servicios**, o en `logica/datos_ejemplo.py` |
 | Precio = precio × perfiles × meses con 10 % de descuento desde 6 meses | `logica/reglas.py` → `calcular_monto` |
+| Agregar un país al selector de teléfono | `logica/reglas.py` → diccionario `PAISES` (nombre, código y cantidad de dígitos) |
 
 **Preguntas probables:**
 - ¿Por qué el hash lleva sal? → Para que dos contraseñas iguales tengan hashes distintos y no sirvan
@@ -109,4 +111,6 @@ estas antes, a mano, y comprobar cada una ejecutando el programa y `python -m un
 - ¿Para qué sirve `PRAGMA foreign_keys = ON`? → Sin él, SQLite no controla las claves foráneas.
 - ¿Qué diferencia hay entre validar en la lógica y en la base? → La lógica da mensajes claros. La base
   es la última barrera, aunque alguien escriba SQL a mano (`demo_restricciones.py`).
+- ¿Por qué el teléfono se guarda con `+595`? → Para aceptar clientes de otros países, usarlo directo
+  en WhatsApp y que `0981 111 222` y `+595 981 111222` sean el mismo número (no se repite).
 - ¿Por qué `?` y no f-strings? → Para evitar la inyección SQL. El dato nunca se interpreta como código SQL.

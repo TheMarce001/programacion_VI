@@ -54,13 +54,25 @@ class PruebasMontosYCupos(unittest.TestCase):
 
 class PruebasValidaciones(unittest.TestCase):
     def test_telefono_se_normaliza(self):
-        for texto in ("0981 123 456", "0981-123-456", "+595 981 123456", "595981123456"):
-            self.assertEqual(reglas.normalizar_telefono(texto), "0981123456")
+        for texto in ("0981 123 456", "0981-123-456", "981123456", "+595 981 123456", "595981123456"):
+            self.assertEqual(reglas.normalizar_telefono(texto), "+595981123456")
+
+    def test_telefono_de_otros_paises(self):
+        self.assertEqual(reglas.normalizar_telefono("11 2345-6789", "Argentina"), "+541123456789")
+        self.assertEqual(reglas.normalizar_telefono("+54 9 11 2345 6789", "Argentina"), "+5491123456789")
+        self.assertEqual(reglas.normalizar_telefono("099 123 456", "Uruguay"), "+59899123456")
+        self.assertEqual(reglas.normalizar_telefono("(11) 91234-5678", "Brasil"), "+5511912345678")
+        self.assertEqual(reglas.normalizar_telefono("(555) 123-4567", "Estados Unidos"), "+15551234567")
+        self.assertEqual(reglas.normalizar_telefono("300 123 4567", "Colombia"), "+573001234567")
 
     def test_telefono_invalido(self):
-        for texto in ("123", "0981abc456", "", "02112345678"):
+        for texto, pais in (("123", "Paraguay"), ("0981abc456", "Paraguay"), ("", "Paraguay"),
+                            ("021 123 456", "Paraguay"),               # fijo: no es celular
+                            ("+54 9 11 2345 6789", "Paraguay"),        # código de otro país
+                            ("0981 123 456", "Marte"),                 # país inexistente
+                            ("099 123", "Uruguay")):                   # le faltan dígitos
             with self.assertRaises(ErrorValidacion):
-                reglas.normalizar_telefono(texto)
+                reglas.normalizar_telefono(texto, pais)
 
     def test_entero(self):
         self.assertEqual(reglas.validar_entero(" 3 ", "Meses", 1, 12), 3)

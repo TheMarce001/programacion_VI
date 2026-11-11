@@ -107,18 +107,51 @@ def validar_nombre(texto, campo="El nombre"):
     return nombre
 
 
-def normalizar_telefono(texto):
-    """Acepta '0981 123 456', '0981-123-456' o '+595 981 123456' y siempre
-    devuelve el mismo formato: '0981123456'. Así un número no se carga dos veces."""
+# País -> (código internacional, mínimo y máximo de dígitos del número SIN el código ni el 0 inicial).
+# Mismo orden que los países principales de la app de ventas de AccountStore PY.
+PAISES = {
+    "Paraguay": ("595", 9, 9),
+    "Argentina": ("54", 10, 11),
+    "Brasil": ("55", 10, 11),
+    "Bolivia": ("591", 8, 8),
+    "Chile": ("56", 9, 9),
+    "Uruguay": ("598", 8, 8),
+    "Perú": ("51", 9, 9),
+    "Colombia": ("57", 10, 10),
+    "Ecuador": ("593", 9, 9),
+    "Venezuela": ("58", 10, 10),
+    "México": ("52", 10, 10),
+    "Estados Unidos": ("1", 10, 10),
+    "España": ("34", 9, 9),
+}
+PAIS_POR_DEFECTO = "Paraguay"
+
+
+def normalizar_telefono(texto, pais=PAIS_POR_DEFECTO):
+    """REGLA: el teléfono se guarda en formato internacional, con el código del
+    país: '0981 123 456' (Paraguay) -> '+595981123456'. Así sirve para WhatsApp
+    y el mismo número no se carga dos veces aunque se escriba distinto."""
+    if pais not in PAISES:
+        raise ErrorValidacion("Seleccione el país del teléfono.")
+    codigo, minimo, maximo = PAISES[pais]
     texto = (texto or "").strip()
     if re.search(r"[^\d\s\-+()]", texto):
         raise ErrorValidacion("El teléfono solo puede contener números, espacios o guiones.")
     digitos = re.sub(r"\D", "", texto)
-    if digitos.startswith("595"):
-        digitos = "0" + digitos[3:]
-    if not re.fullmatch(r"09\d{8}", digitos):
-        raise ErrorValidacion("El teléfono debe ser un celular de Paraguay, por ejemplo 0981 123 456.")
-    return digitos
+    # Si ya viene con el código del país (+595 981..., 595981...), se le quita.
+    if texto.startswith("+") or (digitos.startswith(codigo) and len(digitos) > maximo):
+        if not digitos.startswith(codigo):
+            raise ErrorValidacion(
+                f"El número tiene un código de país distinto de {pais} (+{codigo}). Elija el país correcto.")
+        digitos = digitos[len(codigo):]
+    digitos = digitos.lstrip("0")          # el 0 inicial (0981...) no se usa con el código de país
+    if not minimo <= len(digitos) <= maximo:
+        cantidad = str(minimo) if minimo == maximo else f"{minimo} u {maximo}"
+        raise ErrorValidacion(
+            f"Un teléfono de {pais} debe tener {cantidad} dígitos, sin el 0 inicial ni el +{codigo}.")
+    if pais == "Paraguay" and not digitos.startswith("9"):
+        raise ErrorValidacion("El celular de Paraguay debe empezar con 09, por ejemplo 0981 123 456.")
+    return "+" + codigo + digitos
 
 
 def validar_correo(texto, obligatorio=False):

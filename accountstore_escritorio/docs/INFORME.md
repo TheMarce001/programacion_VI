@@ -207,7 +207,7 @@ El esquema completo está en [`datos/esquema.sql`](../datos/esquema.sql).
 | RN5 | **Renovación sin perder días:** si todavía no venció, se renueva desde el vencimiento; si ya venció, desde hoy. | `reglas.inicio_renovacion` |
 | RN6 | **Los perfiles solo se liberan con la baja:** una suscripción vencida sigue ocupando su lugar hasta que alguien con permiso la da de baja. | consulta de `repositorio.listar_cuentas` |
 | RN7 | **Permisos por rol:** "Pagos y vencimientos" no puede dar de baja, eliminar clientes, tocar cuentas ni crear usuarios. | `logica/permisos.py` |
-| RN8 | **Un teléfono = un cliente:** el teléfono se normaliza (`0981 123 456`, `+595 981 123456` → `0981123456`) y no puede repetirse. | `reglas.normalizar_telefono` + `UNIQUE` |
+| RN8 | **Un teléfono = un cliente, con código de país:** se elige el país (Paraguay por defecto, igual que en la app de ventas) y el número se guarda en formato internacional: `0981 123 456` → `+595981123456`; un número de Uruguay `099 555 777` → `+59899555777`. Así sirve para WhatsApp, se aceptan clientes extranjeros y el mismo número no puede repetirse aunque se escriba distinto. | `reglas.normalizar_telefono` + `UNIQUE` |
 
 ---
 
@@ -267,7 +267,7 @@ puede eliminar un cliente que tiene suscripciones.
 |---|---|---|
 | `NOT NULL` | `clientes.telefono` | Registros incompletos. |
 | `UNIQUE` | `clientes.telefono`, `usuarios.usuario`, `servicios.nombre`, `(servicio_id, correo)` en cuentas | Duplicados. |
-| `CHECK` | `perfiles >= 1`, `capacidad > 0`, `monto > 0`, `meses BETWEEN 1 AND 12`, `vencimiento > fecha_inicio`, `rol IN (…)`, `estado IN ('ACTIVA','BAJA')` | Valores imposibles. |
+| `CHECK` | `perfiles >= 1`, `capacidad > 0`, `monto > 0`, `meses BETWEEN 1 AND 12`, `vencimiento > fecha_inicio`, `rol IN (…)`, `estado IN ('ACTIVA','BAJA')`, `telefono GLOB '+[0-9]*'` (formato internacional) | Valores imposibles. |
 | `FOREIGN KEY … RESTRICT` | ver 4.1 | Referencias a registros inexistentes y borrados que dejan "huérfanos". |
 
 **Demostración:**
@@ -276,7 +276,7 @@ puede eliminar un cliente que tiene suscripciones.
 
   ![Cliente con suscripciones](img/09_cliente_con_suscripciones.png)
 
-- **Directamente en la base, sin pasar por la app:** `python demo_restricciones.py` intenta 7
+- **Directamente en la base, sin pasar por la app:** `python demo_restricciones.py` intenta 8
   operaciones inválidas con SQL y SQLite las rechaza todas:
 
 ```
@@ -287,6 +287,7 @@ puede eliminar un cliente que tiene suscripciones.
 [RECHAZADO] Vencimiento anterior al inicio (CHECK vencimiento > fecha_inicio)
 [RECHAZADO] Cliente con un teléfono que ya existe (UNIQUE)
             SQLite: UNIQUE constraint failed: clientes.telefono
+[RECHAZADO] Teléfono sin el código de país (CHECK telefono GLOB '+[0-9]*')
 [RECHAZADO] Pago con monto negativo (CHECK monto > 0)
 [RECHAZADO] Usuario con un rol inexistente (CHECK rol IN ...)
 [RECHAZADO] Eliminar un cliente que tiene suscripciones (ON DELETE RESTRICT)
@@ -432,7 +433,7 @@ código en capas y de este informe.
 
 **Cómo verifiqué el resultado:**
 
-1. Ejecuté las **32 pruebas automáticas** (`python -m unittest -v`) y todas pasaron. Las pruebas
+1. Ejecuté las **35 pruebas automáticas** (`python -m unittest -v`) y todas pasaron. Las pruebas
    comprueban las reglas de negocio (fin de mes, estados, capacidad), los permisos, las
    restricciones de la base y la persistencia.
 2. Comparé las reglas con mi sistema real: el estado por días (> 3 ACTIVO, 1 a 3 A VENCER,
@@ -457,7 +458,8 @@ código en capas y de este informe.
 | ✅ **Terminado** | Lista de suscripciones con estados por color, buscador, filtros y tarjetas de resumen (incluye lo cobrado en el mes). |
 | ✅ **Terminado** | Interfaz con la identidad de AccountStore PY (logo, colores, menú lateral), adaptable a pantallas chicas. |
 | ✅ **Terminado** | Alta de clientes, servicios, cuentas y usuarios; ocupación de cuentas. |
-| ✅ **Terminado** | Restricciones de base (PK, FK, UNIQUE, CHECK) y 32 pruebas automáticas. |
+| ✅ **Terminado** | Clientes de otros países: selector de país y teléfono guardado con código internacional. |
+| ✅ **Terminado** | Restricciones de base (PK, FK, UNIQUE, CHECK) y 35 pruebas automáticas. |
 | 🟡 **Parcial** | Clientes: se cargan, buscan y eliminan, pero **no se editan**. |
 | 🟡 **Parcial** | Usuarios: se crean, pero **no se pueden desactivar ni cambiar su contraseña** desde la interfaz (la columna `activo` ya existe y el login la respeta). |
 | ⏳ **Pendiente** | Bloqueo temporal tras varios intentos fallidos de inicio de sesión. |
