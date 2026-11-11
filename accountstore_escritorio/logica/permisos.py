@@ -18,7 +18,7 @@ ACCIONES = {
     "dar_de_baja": "dar de baja suscripciones",
     "gestionar_clientes": "registrar clientes",
     "eliminar_cliente": "eliminar clientes",
-    "gestionar_cuentas": "agregar servicios y cuentas",
+    "gestionar_cuentas": "agregar o eliminar servicios y cuentas",
     "gestionar_usuarios": "crear usuarios",
 }
 

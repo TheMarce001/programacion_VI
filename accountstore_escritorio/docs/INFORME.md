@@ -61,8 +61,9 @@ para reemplazar el control manual en planillas y evitar sobreventas y datos inco
    cobrado en el mes), nueva venta, renovación, baja, búsqueda, filtro por estado
    (ACTIVO / A VENCER / VENCIDO / BAJA) e historial de pagos.
 3. **Clientes:** alta, búsqueda y eliminación (solo si no tiene suscripciones).
-4. **Cuentas y servicios:** alta de servicios (capacidad y precio) y de cuentas, con la ocupación
-   de perfiles de cada cuenta.
+4. **Cuentas y servicios:** alta y eliminación de servicios (capacidad y precio) y de cuentas, con
+   la ocupación de perfiles de cada cuenta. Solo se elimina lo que no está en uso: un servicio sin
+   cuentas o una cuenta sin suscripciones.
 5. **Usuarios:** lista y alta de usuarios (solo el Administrador).
 
 **Funcionalidades excluidas** (no se hacen en esta versión)
@@ -266,7 +267,7 @@ puede eliminar un cliente que tiene suscripciones.
 | Restricción | Ejemplo | Qué evita |
 |---|---|---|
 | `NOT NULL` | `clientes.telefono` | Registros incompletos. |
-| `UNIQUE` | `clientes.telefono`, `usuarios.usuario`, `servicios.nombre`, `(servicio_id, correo)` en cuentas | Duplicados. |
+| `UNIQUE` | `clientes.telefono`, `usuarios.usuario`, `servicios.nombre` (con `COLLATE NOCASE`: "netflix" y "Netflix" son el mismo), `(servicio_id, correo)` en cuentas | Duplicados. |
 | `CHECK` | `perfiles >= 1`, `capacidad > 0`, `monto > 0`, `meses BETWEEN 1 AND 12`, `vencimiento > fecha_inicio`, `rol IN (…)`, `estado IN ('ACTIVA','BAJA')`, `telefono GLOB '+[0-9]*'` (formato internacional) | Valores imposibles. |
 | `FOREIGN KEY … RESTRICT` | ver 4.1 | Referencias a registros inexistentes y borrados que dejan "huérfanos". |
 
@@ -433,7 +434,7 @@ código en capas y de este informe.
 
 **Cómo verifiqué el resultado:**
 
-1. Ejecuté las **35 pruebas automáticas** (`python -m unittest -v`) y todas pasaron. Las pruebas
+1. Ejecuté las **39 pruebas automáticas** (`python -m unittest -v`) y todas pasaron. Las pruebas
    comprueban las reglas de negocio (fin de mes, estados, capacidad), los permisos, las
    restricciones de la base y la persistencia.
 2. Comparé las reglas con mi sistema real: el estado por días (> 3 ACTIVO, 1 a 3 A VENCER,
@@ -457,9 +458,9 @@ código en capas y de este informe.
 | ✅ **Terminado** | Renovación sin pérdida de días; baja que libera perfiles; historial de pagos. |
 | ✅ **Terminado** | Lista de suscripciones con estados por color, buscador, filtros y tarjetas de resumen (incluye lo cobrado en el mes). |
 | ✅ **Terminado** | Interfaz con la identidad de AccountStore PY (logo, colores, menú lateral), adaptable a pantallas chicas. |
-| ✅ **Terminado** | Alta de clientes, servicios, cuentas y usuarios; ocupación de cuentas. |
+| ✅ **Terminado** | Alta de clientes, servicios, cuentas y usuarios; ocupación de cuentas; eliminación de servicios y cuentas que no están en uso. |
 | ✅ **Terminado** | Clientes de otros países: selector de país y teléfono guardado con código internacional. |
-| ✅ **Terminado** | Restricciones de base (PK, FK, UNIQUE, CHECK) y 35 pruebas automáticas. |
+| ✅ **Terminado** | Restricciones de base (PK, FK, UNIQUE, CHECK) y 39 pruebas automáticas. |
 | 🟡 **Parcial** | Clientes: se cargan, buscan y eliminan, pero **no se editan**. |
 | 🟡 **Parcial** | Usuarios: se crean, pero **no se pueden desactivar ni cambiar su contraseña** desde la interfaz (la columna `activo` ya existe y el login la respeta). |
 | ⏳ **Pendiente** | Bloqueo temporal tras varios intentos fallidos de inicio de sesión. |

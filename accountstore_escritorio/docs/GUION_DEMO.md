@@ -4,7 +4,7 @@ Cada paso indica qué **indicador de la rúbrica** cubre. Conviene ensayarlo 2 o
 
 **La noche anterior (en la notebook con la que vas a presentar)**
 - Copiar el proyecto y ejecutar `python main.py` una vez, para comprobar que abre. Ejecutar también
-  `python -m unittest -v`: tienen que pasar las 35 pruebas.
+  `python -m unittest -v`: tienen que pasar las 39 pruebas.
 - Llevar una copia de respaldo (pendrive y GitHub) por si falla la notebook.
 - Recorrer este guion completo al menos una vez, en voz alta y con el reloj.
 
@@ -59,6 +59,7 @@ Con el [INFORME](INFORME.md) abierto:
 14. **Clientes → eliminar a Ana Gómez** → rechazado porque tiene suscripciones (FK).
     **Nuevo cliente** de Paraguay con el teléfono `0981 111 222` → rechazado porque ya existe (UNIQUE) (4.2).
     Después, un cliente de **Uruguay** con `099 555 777` → se guarda como `+59899555777` (RN8).
+    En **Cuentas y servicios**, seleccionar **Netflix → Eliminar** → rechazado porque tiene cuentas (FK).
 15. En la terminal: `python demo_restricciones.py` → 8 intentos de SQL directo, **todos rechazados** por
     SQLite (4.2).
 16. **Cerrar el programa** (botón X). Volver a abrir con `python main.py`, ingresar y mostrar que la
@@ -78,7 +79,7 @@ Con el [INFORME](INFORME.md) abierto:
 
 ## Parte 6 — IA, estado y planificación (1 min) · indicadores 6.3, 7.1 y 7.2
 
-21. Uso de IA y cómo lo verifiqué: `python -m unittest -v` → **35 pruebas OK** (§6).
+21. Uso de IA y cómo lo verifiqué: `python -m unittest -v` → **39 pruebas OK** (§6).
 22. Funcionalidades terminadas, parciales y pendientes, y plan con fechas (§7).
 
 ---

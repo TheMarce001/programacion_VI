@@ -128,6 +128,30 @@ class Gestor:
         except sqlite3.IntegrityError as error:
             raise _error_de_base(error, f"La cuenta {correo} ya está registrada en ese servicio.") from error
 
+    def eliminar_servicio(self, servicio_id):
+        exigir_permiso(self.usuario, "gestionar_cuentas")
+        if servicio_id is None:
+            raise ErrorValidacion("Seleccione un servicio de la lista.")
+        try:
+            self.repo.eliminar_servicio(servicio_id)
+        except sqlite3.IntegrityError as error:
+            # La clave foránea cuentas.servicio_id (ON DELETE RESTRICT) lo impide.
+            raise ErrorValidacion(
+                "No se puede eliminar este servicio porque tiene cuentas registradas. "
+                "Primero elimine sus cuentas.") from error
+
+    def eliminar_cuenta(self, cuenta_id):
+        exigir_permiso(self.usuario, "gestionar_cuentas")
+        if cuenta_id is None:
+            raise ErrorValidacion("Seleccione una cuenta de la lista.")
+        try:
+            self.repo.eliminar_cuenta(cuenta_id)
+        except sqlite3.IntegrityError as error:
+            # La clave foránea suscripciones.cuenta_id (ON DELETE RESTRICT) lo impide.
+            raise ErrorValidacion(
+                "No se puede eliminar esta cuenta porque tiene suscripciones registradas: "
+                "su historial debe conservarse.") from error
+
     def _cuenta(self, cuenta_id):
         fila = self.repo.obtener_cuenta(cuenta_id)
         if fila is None:

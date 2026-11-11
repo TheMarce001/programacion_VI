@@ -32,7 +32,7 @@ borrar ese archivo.
 ## Herramientas para la defensa
 
 ```bash
-python -m unittest -v              # 35 pruebas automáticas
+python -m unittest -v              # 39 pruebas automáticas
 python inspeccionar_bd.py          # muestra las tablas (por ejemplo: python inspeccionar_bd.py usuarios)
 python demo_restricciones.py       # SQL inválido directo a la base: SQLite lo rechaza
 ```

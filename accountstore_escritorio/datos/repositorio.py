@@ -72,6 +72,14 @@ class Repositorio:
                  GROUP BY c.id"""
         return self.conexion.execute(sql, (cuenta_id,)).fetchone()
 
+    def eliminar_servicio(self, servicio_id):
+        with self.conexion:
+            self.conexion.execute("DELETE FROM servicios WHERE id = ?", (servicio_id,))
+
+    def eliminar_cuenta(self, cuenta_id):
+        with self.conexion:
+            self.conexion.execute("DELETE FROM cuentas WHERE id = ?", (cuenta_id,))
+
     def insertar_cuenta(self, servicio_id, correo):
         sql = "INSERT INTO cuentas (servicio_id, correo) VALUES (?, ?)"
         with self.conexion:

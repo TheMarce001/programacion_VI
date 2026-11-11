@@ -166,6 +166,31 @@ class PruebasGestor(unittest.TestCase):
             self.gestor.eliminar_cliente(self._cliente("Ana Gómez")["id"])
         self.gestor.eliminar_cliente(self._cliente("Jorge Villalba")["id"])     # sin suscripciones
 
+    def test_servicio_repetido_sin_importar_mayusculas(self):
+        self.gestor.iniciar_sesion("admin", "Admin2026!")
+        with self.assertRaises(ErrorValidacion):
+            self.gestor.registrar_servicio("NETFLIX", "5", "30000")       # ya existe "Netflix"
+
+    def test_eliminar_servicio_mal_escrito(self):
+        self.gestor.iniciar_sesion("admin", "Admin2026!")
+        servicio_id = self.gestor.registrar_servicio("Netfix", "5", "30.000")
+        self.gestor.eliminar_servicio(servicio_id)                         # sin cuentas: se elimina
+        self.assertNotIn("Netfix", [s["nombre"] for s in self.gestor.listar_servicios()])
+
+    def test_no_se_elimina_servicio_o_cuenta_en_uso(self):
+        self.gestor.iniciar_sesion("admin", "Admin2026!")
+        netflix = next(s for s in self.gestor.listar_servicios() if s["nombre"] == "Netflix")
+        with self.assertRaises(ErrorValidacion):
+            self.gestor.eliminar_servicio(netflix["id"])                   # tiene cuentas (FK)
+        with self.assertRaises(ErrorValidacion):
+            self.gestor.eliminar_cuenta(self._cuenta("netflix01@example.com")["id"])  # tiene ventas
+        self.gestor.eliminar_cuenta(self._cuenta("spotify01@example.com")["id"])      # sin ventas
+
+    def test_cobranza_no_puede_eliminar_servicios(self):
+        self.gestor.iniciar_sesion("cobranza", "Cobra2026!")
+        with self.assertRaises(PermisoDenegado):
+            self.gestor.eliminar_cuenta(self._cuenta("spotify01@example.com")["id"])
+
     def test_usuario_nuevo_se_guarda_con_hash(self):
         self.gestor.iniciar_sesion("admin", "Admin2026!")
         self.gestor.registrar_usuario("ventas1", "Vendedor Uno", "COBRANZA", "Ventas2026", "Ventas2026")

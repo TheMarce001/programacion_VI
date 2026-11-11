@@ -267,6 +267,7 @@ class Dialogo(tk.Toplevel):
 
     def __init__(self, padre, titulo):
         super().__init__(padre)
+        self.withdraw()          # oculta mientras se arma, para que no aparezca en una esquina
         self.title(titulo)
         self.resizable(False, False)
         self.configure(background=PAPEL)
@@ -274,7 +275,18 @@ class Dialogo(tk.Toplevel):
         self.cuerpo = ttk.Frame(self, padding=22)
         self.cuerpo.pack(fill="both", expand=True)
         self.bind("<Escape>", lambda _evento: self.destroy())
-        self.after_idle(self._hacer_modal)
+        self.after_idle(self._mostrar_centrado)   # cuando ya está todo el contenido
+
+    def _mostrar_centrado(self):
+        """Ubica el diálogo en el centro de la ventana principal y lo muestra."""
+        self.update_idletasks()
+        principal = self.master.winfo_toplevel()
+        ancho, alto = self.winfo_reqwidth(), self.winfo_reqheight()
+        x = principal.winfo_rootx() + (principal.winfo_width() - ancho) // 2
+        y = principal.winfo_rooty() + (principal.winfo_height() - alto) // 2
+        self.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+        self.deiconify()
+        self.after(50, self._hacer_modal)
 
     def _hacer_modal(self):
         try:

@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 -- Plataformas que se venden (Netflix, Disney+, ...).
 CREATE TABLE IF NOT EXISTS servicios (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre          TEXT    NOT NULL UNIQUE,
+    nombre          TEXT    NOT NULL UNIQUE COLLATE NOCASE,   -- "netflix" = "Netflix" (no se repite)
     capacidad       INTEGER NOT NULL CHECK (capacidad > 0),       -- perfiles por cuenta
     precio_mensual  INTEGER NOT NULL CHECK (precio_mensual > 0)   -- Gs. por perfil y por mes
 );
