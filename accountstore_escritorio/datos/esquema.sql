@@ -64,3 +64,6 @@ CREATE TABLE IF NOT EXISTS pagos (
     descuento       INTEGER NOT NULL DEFAULT 0 CHECK (descuento >= 0),   -- Gs. descontados
     monto           INTEGER NOT NULL CHECK (monto > 0)                   -- total cobrado (ya con descuento)
 );
+
+-- Versión de esta estructura. Si la base es de una versión anterior, el programa avisa.
+PRAGMA user_version = 2;

@@ -8,9 +8,11 @@ Capas del sistema:
   datos/     -> conexión a SQLite y todas las consultas SQL
 """
 import logging
+import tkinter as tk
 from pathlib import Path
+from tkinter import messagebox
 
-from datos.conexion import conectar, inicializar
+from datos.conexion import BaseIncompatible, conectar, inicializar
 from datos.repositorio import Repositorio
 from interfaz.app import Aplicacion
 from logica.datos_ejemplo import cargar_si_esta_vacia
@@ -22,7 +24,14 @@ def main():
                         format="%(asctime)s %(levelname)s %(message)s", encoding="utf-8")
     conexion = conectar()
     try:
-        inicializar(conexion)
+        try:
+            inicializar(conexion)
+        except BaseIncompatible as error:
+            ventana = tk.Tk()
+            ventana.withdraw()
+            messagebox.showerror("Base de datos de una versión anterior", str(error))
+            ventana.destroy()
+            return
         repositorio = Repositorio(conexion)
         if cargar_si_esta_vacia(repositorio):
             logging.info("Base nueva: se cargaron los datos de ejemplo.")

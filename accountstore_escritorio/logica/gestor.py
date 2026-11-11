@@ -26,10 +26,12 @@ def _error_de_base(error, si_repetido):
 
 
 def _texto_busqueda(texto):
-    """Si se busca un número escrito como 0981..., se quita el 0 inicial para
-    que coincida con el teléfono guardado en formato internacional (+595981...)."""
+    """Si se busca un teléfono (0981 111-222), se dejan solo los números y se quita
+    el 0 inicial, para que coincida con el guardado en formato internacional (+595981...)."""
     texto = (texto or "").strip()
-    return texto.lstrip("0") if texto.isdigit() else texto
+    if texto and all(c.isdigit() or c in " -+()" for c in texto) and any(c.isdigit() for c in texto):
+        return "".join(c for c in texto if c.isdigit()).lstrip("0")
+    return texto
 
 
 class Gestor:
@@ -108,11 +110,10 @@ class Gestor:
 
     def registrar_servicio(self, nombre, capacidad, precio_mensual):
         exigir_permiso(self.usuario, "gestionar_cuentas")
-        nombre = " ".join((nombre or "").split())
-        if len(nombre) < 2:
-            raise ErrorValidacion("Escriba el nombre del servicio.")
+        nombre = reglas.validar_nombre_servicio(nombre)
         capacidad = reglas.validar_entero(capacidad, "La capacidad (perfiles por cuenta)", 1, 20)
-        precio = reglas.validar_entero(str(precio_mensual).replace(".", ""), "El precio mensual", 1000)
+        precio = reglas.validar_entero(str(precio_mensual).replace(".", ""), "El precio mensual",
+                                       1000, 10_000_000)
         try:
             return self.repo.insertar_servicio(nombre, capacidad, precio)
         except sqlite3.IntegrityError as error:
@@ -229,6 +230,8 @@ class Gestor:
         inicio = reglas.convertir_fecha(fecha_inicio)
         if inicio > hoy:
             raise ErrorValidacion("La fecha de inicio no puede ser posterior a hoy.")
+        if (hoy - inicio).days > reglas.DIAS_ATRAS_MAXIMO:
+            raise ErrorValidacion("La fecha de inicio no puede ser de hace más de un año.")
 
         # 2) Aplicar las reglas de negocio
         cuenta = self._cuenta(cuenta_id)

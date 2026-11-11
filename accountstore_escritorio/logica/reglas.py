@@ -13,7 +13,11 @@ from logica.errores import ErrorValidacion
 DIAS_AVISO = 3          # con 3 días o menos para vencer, la suscripción está "A VENCER"
 MESES_MAXIMOS = 12      # una venta o renovación es de 1 a 12 meses
 FORMATO_FECHA = "%d/%m/%Y"
-PATRON_CORREO = re.compile(r"[^@\s]+@[^@\s]+\.[a-z]{2,}")
+# usuario@dominio.ext : letras, números y . _ % + - antes de la @; el dominio por partes separadas por
+# un solo punto (no admite "..") y una terminación de al menos 2 letras (.com, .py, .com.py)
+PATRON_CORREO = re.compile(r"[a-z0-9._%+-]+@[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}")
+LARGO_MAXIMO = {"nombre": 60, "correo": 100, "servicio": 30, "clave": 64}
+DIAS_ATRAS_MAXIMO = 366       # una venta puede registrarse con fecha de inicio de hasta un año atrás
 
 
 # ------------------------------------------------------------------ fechas
@@ -109,6 +113,10 @@ def validar_cupo(capacidad, ocupados, perfiles, cuenta):
 
 
 # ----------------------------------------------------------- validaciones
+def _miles(numero):
+    return f"{numero:,}".replace(",", ".")
+
+
 def validar_entero(texto, campo, minimo, maximo=None):
     texto = str(texto).strip()
     if not texto.isdigit():
@@ -116,17 +124,34 @@ def validar_entero(texto, campo, minimo, maximo=None):
     valor = int(texto)
     if valor < minimo or (maximo is not None and valor > maximo):
         if maximo is None:
-            raise ErrorValidacion(f"{campo} debe ser como mínimo {minimo}.")
-        raise ErrorValidacion(f"{campo} debe estar entre {minimo} y {maximo}.")
+            raise ErrorValidacion(f"{campo} debe ser como mínimo {_miles(minimo)}.")
+        raise ErrorValidacion(f"{campo} debe estar entre {_miles(minimo)} y {_miles(maximo)}.")
     return valor
 
 
 def validar_nombre(texto, campo="El nombre"):
+    """Nombre de persona: solo letras (con tildes y ñ), espacios, apóstrofo, punto o guion."""
     nombre = " ".join((texto or "").split())        # quita espacios de más
-    if len(nombre) < 3:
-        raise ErrorValidacion(f"{campo} debe tener al menos 3 letras.")
     if any(caracter.isdigit() for caracter in nombre):
         raise ErrorValidacion(f"{campo} no puede contener números.")
+    if any(not (c.isalpha() or c in " '.-") for c in nombre):
+        raise ErrorValidacion(f"{campo} solo puede tener letras y espacios.")
+    if sum(c.isalpha() for c in nombre) < 3:
+        raise ErrorValidacion(f"{campo} debe tener al menos 3 letras.")
+    if len(nombre) > LARGO_MAXIMO["nombre"]:
+        raise ErrorValidacion(f"{campo} no puede tener más de {LARGO_MAXIMO['nombre']} caracteres.")
+    return nombre
+
+
+def validar_nombre_servicio(texto):
+    """Nombre de servicio: letras, números y + . & - (ej. "Disney+", "Office 365"), con al menos una letra."""
+    nombre = " ".join((texto or "").split())
+    if len(nombre) < 2:
+        raise ErrorValidacion("Escriba el nombre del servicio (al menos 2 caracteres).")
+    if not any(c.isalpha() for c in nombre) or any(not (c.isalnum() or c in " +.&-") for c in nombre):
+        raise ErrorValidacion("El nombre del servicio debe tener letras y solo puede usar números y + . & -")
+    if len(nombre) > LARGO_MAXIMO["servicio"]:
+        raise ErrorValidacion(f"El nombre del servicio no puede tener más de {LARGO_MAXIMO['servicio']} caracteres.")
     return nombre
 
 
@@ -183,22 +208,23 @@ def validar_correo(texto, obligatorio=False):
         if obligatorio:
             raise ErrorValidacion("El correo es obligatorio.")
         return None
-    if not PATRON_CORREO.fullmatch(correo):
-        raise ErrorValidacion(f"El correo «{correo}» no es válido.")
+    if len(correo) > LARGO_MAXIMO["correo"] or not PATRON_CORREO.fullmatch(correo):
+        raise ErrorValidacion(f"El correo «{correo[:40]}» no es válido. Ejemplo: nombre@gmail.com")
     return correo
 
 
 def validar_usuario(texto):
     usuario = (texto or "").strip().lower()
-    if not re.fullmatch(r"[a-z0-9_.]{3,20}", usuario):
+    if not re.fullmatch(r"[a-z][a-z0-9_.]{2,19}", usuario):
         raise ErrorValidacion(
-            "El usuario debe tener de 3 a 20 caracteres: letras sin tilde, números, punto o guion bajo.")
+            "El usuario debe empezar con una letra y tener de 3 a 20 caracteres: letras sin tilde, "
+            "números, punto o guion bajo.")
     return usuario
 
 
 def validar_clave_nueva(clave, confirmacion):
-    if len(clave) < 8:
-        raise ErrorValidacion("La contraseña debe tener al menos 8 caracteres.")
+    if not 8 <= len(clave) <= LARGO_MAXIMO["clave"]:
+        raise ErrorValidacion(f"La contraseña debe tener entre 8 y {LARGO_MAXIMO['clave']} caracteres.")
     if not re.search(r"[A-Za-z]", clave) or not re.search(r"\d", clave):
         raise ErrorValidacion("La contraseña debe combinar letras y números.")
     if clave != confirmacion:

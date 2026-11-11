@@ -4,7 +4,7 @@ Cada paso indica qué **indicador de la rúbrica** cubre. Conviene ensayarlo 2 o
 
 **La noche anterior (en la notebook con la que vas a presentar)**
 - Copiar el proyecto y ejecutar `python main.py` una vez, para comprobar que abre. Ejecutar también
-  `python -m unittest -v`: tienen que pasar las 45 pruebas.
+  `python -m unittest -v`: tienen que pasar las 55 pruebas.
 - Llevar una copia de respaldo (pendrive y GitHub) por si falla la notebook.
 - Recorrer este guion completo al menos una vez, en voz alta y con el reloj.
 
@@ -84,7 +84,7 @@ Con el [INFORME](INFORME.md) abierto:
 
 ## Parte 6 — IA, estado y planificación (1 min) · indicadores 6.3, 7.1 y 7.2
 
-21. Uso de IA y cómo lo verifiqué: `python -m unittest -v` → **45 pruebas OK** (§6).
+21. Uso de IA y cómo lo verifiqué: `python -m unittest -v` → **55 pruebas OK** (§6).
 22. Funcionalidades terminadas, parciales y pendientes, y plan con fechas (§7).
 
 ---
@@ -108,6 +108,10 @@ estas antes, a mano, y comprobar cada una ejecutando el programa y `python -m un
 | Precio = precio × perfiles × meses con 10 % de descuento desde 6 meses | `logica/reglas.py` → `calcular_monto` |
 | Agregar un país al selector de teléfono | `logica/reglas.py` → diccionario `PAISES` (nombre, código y cantidad de dígitos) |
 | Descuento máximo de 30 % | `logica/reglas.py` → `calcular_descuento`: `validar_entero(texto, "...", 0, 30)` |
+
+**Si el docente prueba datos raros** (correo sin @, nombre con números, precio con letras, fecha
+31/02…), todos los campos están validados: ver la tabla *Validaciones de cada campo* en el §3 del
+informe. El sistema muestra el motivo y no guarda nada.
 
 **Preguntas probables:**
 - ¿Por qué el hash lleva sal? → Para que dos contraseñas iguales tengan hashes distintos y no sirvan

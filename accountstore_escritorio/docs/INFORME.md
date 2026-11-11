@@ -247,9 +247,29 @@ El esquema completo está en [`datos/esquema.sql`](../datos/esquema.sql).
 |---|---|
 | ![Cuenta llena](img/06_cuenta_llena_rechazada.png) | ![Meses inválidos](img/07_meses_invalidos.png) |
 
-Otros rechazos: perfiles 0 o con letras, fecha inexistente (31/02/2026), fecha futura y teléfono
-con letras. En todos los casos el formulario queda abierto para corregir y **no se escribe nada**
-en la base, porque la validación ocurre **antes** del `INSERT`.
+En todos los casos el formulario queda abierto para corregir, conserva lo escrito y **no se escribe
+nada** en la base, porque la validación ocurre **antes** del `INSERT`. La base es la última barrera
+(§4.2).
+
+**Validaciones de cada campo** (`logica/reglas.py`):
+
+| Campo | Se acepta | Se rechaza (ejemplos) |
+|---|---|---|
+| Nombre de persona (cliente, usuario) | Letras con tildes y ñ, espacios, `'` `.` `-`; al menos 3 letras; hasta 60 caracteres | `123`, `!!!`, `Ana 2`, `Al`, vacío |
+| Teléfono | Celular del país elegido; se guarda como `+595981123456` | `abc`, `0981`, `021 123 456` (fijo), número de otro país, repetido |
+| Correo | `nombre@dominio.com` (también `.com.py`, `+`, `.`); opcional en clientes | `sinarroba`, `ana@`, `ana@gmail`, `ana@@gmail.com`, `ana@gmail..com` |
+| Usuario | Empieza con letra; 3 a 20 letras sin tilde, números, `.` o `_` | `123`, `...`, `ab`, `con espacio`, repetido (sin importar mayúsculas) |
+| Contraseña | 8 a 64 caracteres con letras y números; las dos iguales | `corta1`, `solamenteletras`, `12345678`, distintas |
+| Servicio | Letras y números, `+ . & -` (`Disney+`, `Office 365`); hasta 30; no repetido | `123`, `!!!`, `NETFLIX` si existe `Netflix` |
+| Capacidad / precio | 1 a 20 perfiles; Gs. 1.000 a 10.000.000 (acepta `30.000`) | `0`, `abc`, `-3`, `500`, `30,000` |
+| Perfiles | Entero ≥ 1 y que entre en los libres de la cuenta | `0`, `abc`, `1.5`, más que los libres |
+| Meses | Entero de 1 a 12 | `0`, `13`, `uno` |
+| Fecha de inicio | `dd/mm/aaaa` existente, no futura, de hasta un año atrás | `31/02/2026`, `2026-11-12`, mañana, `01/01/1900` |
+| Descuento | Vacío, Gs. o % entero; total final mayor a cero | `-5`, `abc`, `10.5 %`, `101 %`, igual o mayor al total |
+
+En las pruebas automáticas y en un recorrido de la interfaz se intentaron **121 datos inválidos**
+en la lógica y **49 casos** en los formularios. Todos fueron rechazados con un mensaje claro, sin
+guardar nada y sin cerrar el programa.
 
 ---
 
@@ -440,6 +460,9 @@ self.conexion.execute("SELECT ... FROM usuarios WHERE usuario = ?", (usuario,))
   `try/except`, muestra un aviso y guarda el detalle en `errores.log`. Además,
   `report_callback_exception` (en `app.py`) captura cualquier error de un botón. **El programa
   nunca se cierra por un error.**
+- **Base de una versión anterior:** el esquema lleva un número de versión (`PRAGMA user_version`).
+  Si `accountstore.db` es de una versión vieja, al abrir el programa se avisa que hay que borrarla,
+  en lugar de fallar después en medio de una venta.
 
 ---
 
@@ -454,7 +477,7 @@ código en capas y de este informe.
 
 **Cómo verifiqué el resultado:**
 
-1. Ejecuté las **45 pruebas automáticas** (`python -m unittest -v`) y todas pasaron. Las pruebas
+1. Ejecuté las **55 pruebas automáticas** (`python -m unittest -v`) y todas pasaron. Las pruebas
    comprueban las reglas de negocio (fin de mes, estados, capacidad), los permisos, las
    restricciones de la base y la persistencia.
 2. Comparé las reglas con mi sistema real: el estado por días (> 3 ACTIVO, 1 a 3 A VENCER,
@@ -481,7 +504,7 @@ código en capas y de este informe.
 | ✅ **Terminado** | Alta de clientes, servicios, cuentas y usuarios; ocupación de cuentas; eliminación de servicios y cuentas que no están en uso. |
 | ✅ **Terminado** | Clientes de otros países: selector de país y teléfono guardado con código internacional. |
 | ✅ **Terminado** | Descuento en ventas y renovaciones (en Gs. o en %) y buscador de clientes sin tildes en la venta. |
-| ✅ **Terminado** | Restricciones de base (PK, FK, UNIQUE, CHECK) y 45 pruebas automáticas. |
+| ✅ **Terminado** | Restricciones de base (PK, FK, UNIQUE, CHECK) y 55 pruebas automáticas. |
 | 🟡 **Parcial** | Clientes: se cargan, buscan y eliminan, pero **no se editan**. |
 | 🟡 **Parcial** | Usuarios: se crean, pero **no se pueden desactivar ni cambiar su contraseña** desde la interfaz (la columna `activo` ya existe y el login la respeta). |
 | ⏳ **Pendiente** | Bloqueo temporal tras varios intentos fallidos de inicio de sesión. |

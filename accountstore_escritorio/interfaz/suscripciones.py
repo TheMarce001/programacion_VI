@@ -73,7 +73,11 @@ class PestanaSuscripciones(ttk.Frame):
         # ---- Tabla (ocupa el espacio que queda)
         marco, self.tabla = crear_tabla(self, COLUMNAS, alto=9)
         marco.pack(fill="both", expand=True)
-        self.tabla.bind("<Double-1>", lambda _evento: self.historial())
+        self.tabla.bind("<Double-1>", self._doble_clic)
+
+    def _doble_clic(self, evento):
+        if self.tabla.identify_region(evento.x, evento.y) == "cell":
+            self.historial()
 
     def filtrar(self, situacion):
         self.situacion = situacion
@@ -245,7 +249,7 @@ class DialogoVenta(Dialogo):
         ttk.Label(c, text="Perfiles").grid(row=5, column=0, sticky="w", pady=5)
         fila = ttk.Frame(c)
         fila.grid(row=5, column=1, sticky="w", pady=5)
-        ttk.Spinbox(fila, from_=1, to=6, textvariable=self.perfiles, width=5).pack(side="left")
+        ttk.Spinbox(fila, from_=1, to=20, textvariable=self.perfiles, width=5).pack(side="left")
         ttk.Label(fila, text="Meses").pack(side="left", padx=(16, 6))
         ttk.Spinbox(fila, from_=1, to=MESES_MAXIMOS, textvariable=self.meses, width=5).pack(side="left")
         ttk.Label(fila, text="Inicio").pack(side="left", padx=(16, 6))

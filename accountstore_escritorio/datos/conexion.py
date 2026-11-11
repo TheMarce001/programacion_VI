@@ -11,6 +11,11 @@ from pathlib import Path
 CARPETA_DATOS = Path(__file__).resolve().parent
 RUTA_BD = CARPETA_DATOS.parent / "accountstore.db"
 RUTA_ESQUEMA = CARPETA_DATOS / "esquema.sql"
+VERSION_ESQUEMA = 2          # debe coincidir con "PRAGMA user_version" al final de esquema.sql
+
+
+class BaseIncompatible(Exception):
+    """La base accountstore.db fue creada por una versión anterior del sistema."""
 
 
 def sin_tildes(texto):
@@ -36,5 +41,14 @@ def conectar(ruta=None):
 
 
 def inicializar(conexion):
-    """Crea las tablas si todavía no existen (no borra datos)."""
+    """Crea las tablas si todavía no existen (no borra datos). Si la base ya
+    existía pero es de una versión anterior, avisa en lugar de fallar después."""
+    version = conexion.execute("PRAGMA user_version").fetchone()[0]
+    existe = conexion.execute(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'usuarios'").fetchone()[0]
+    if existe and version != VERSION_ESQUEMA:
+        raise BaseIncompatible(
+            "La base de datos accountstore.db es de una versión anterior del sistema.\n\n"
+            "Cierre el programa, borre el archivo accountstore.db de la carpeta del proyecto "
+            "y vuelva a abrirlo: se creará solo, con los datos de ejemplo.")
     conexion.executescript(RUTA_ESQUEMA.read_text(encoding="utf-8"))
