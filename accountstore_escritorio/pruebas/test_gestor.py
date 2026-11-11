@@ -116,6 +116,35 @@ class PruebasGestor(unittest.TestCase):
         self.gestor.registrar_venta(cliente, cuenta, "1", "1", "12/11/2026", hoy=HOY)
         self.assertEqual(self.gestor.resumen(hoy=HOY)["cobrado_mes"], cobrado_antes + 30000)
 
+    def test_venta_con_descuento(self):
+        self.gestor.iniciar_sesion("cobranza", "Cobra2026!")
+        cuenta = self._cuenta("netflix02@example.com")["id"]
+        cliente = self._cliente("Jorge Villalba")["id"]
+        venta = self.gestor.registrar_venta(cliente, cuenta, "2", "3", "12/11/2026", "10", "%", hoy=HOY)
+        self.assertEqual((venta["subtotal"], venta["descuento"], venta["monto"]), (180000, 18000, 162000))
+        pago = self.gestor.historial_pagos(venta["id"])[0]
+        self.assertEqual((pago["descuento"], pago["monto"]), (18000, 162000))
+
+    def test_descuento_mayor_al_total_no_guarda(self):
+        self.gestor.iniciar_sesion("admin", "Admin2026!")
+        antes = self._contar("suscripciones")
+        cuenta = self._cuenta("netflix02@example.com")["id"]
+        cliente = self._cliente("Jorge Villalba")["id"]
+        with self.assertRaises(ErrorValidacion):
+            self.gestor.registrar_venta(cliente, cuenta, "1", "1", "12/11/2026", "50.000", "Gs.", hoy=HOY)
+        self.assertEqual(self._contar("suscripciones"), antes)
+
+    def test_renovar_con_descuento(self):
+        self.gestor.iniciar_sesion("admin", "Admin2026!")
+        ana = self.gestor.listar_suscripciones("Ana", hoy=HOY)[0]       # 2 perfiles de Netflix
+        datos = self.gestor.renovar(ana["id"], "1", "10.000", "Gs.", hoy=HOY)
+        self.assertEqual((datos["subtotal"], datos["descuento"], datos["monto"]), (60000, 10000, 50000))
+
+    def test_buscar_sin_tildes(self):
+        self.gestor.iniciar_sesion("admin", "Admin2026!")
+        self.assertEqual([c["nombre"] for c in self.gestor.listar_clientes("gomez")], ["Ana Gómez"])
+        self.assertEqual(len(self.gestor.listar_suscripciones("RAMIREZ", hoy=HOY)), 1)
+
     def test_renovar_vencida_cuenta_desde_hoy(self):
         self.gestor.iniciar_sesion("cobranza", "Cobra2026!")
         diego = self.gestor.listar_suscripciones("Diego", hoy=HOY)[0]

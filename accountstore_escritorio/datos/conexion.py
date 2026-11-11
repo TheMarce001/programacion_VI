@@ -5,11 +5,21 @@ Como queda guardada en el disco, los datos siguen ahí al cerrar y volver a
 abrir el programa.
 """
 import sqlite3
+import unicodedata
 from pathlib import Path
 
 CARPETA_DATOS = Path(__file__).resolve().parent
 RUTA_BD = CARPETA_DATOS.parent / "accountstore.db"
 RUTA_ESQUEMA = CARPETA_DATOS / "esquema.sql"
+
+
+def sin_tildes(texto):
+    """'Gómez' -> 'gomez'. Se registra como función de SQLite para que el
+    buscador encuentre nombres aunque se escriban sin tilde."""
+    if texto is None:
+        return None
+    descompuesto = unicodedata.normalize("NFD", str(texto))
+    return "".join(c for c in descompuesto if unicodedata.category(c) != "Mn").lower()
 
 
 def conectar(ruta=None):
@@ -21,6 +31,7 @@ def conectar(ruta=None):
     conexion = sqlite3.connect(str(ruta or RUTA_BD))
     conexion.row_factory = sqlite3.Row      # permite leer columnas por nombre: fila["nombre"]
     conexion.execute("PRAGMA foreign_keys = ON")
+    conexion.create_function("sin_tildes", 1, sin_tildes, deterministic=True)
     return conexion
 
 

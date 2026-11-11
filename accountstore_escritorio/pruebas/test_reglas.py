@@ -42,6 +42,17 @@ class PruebasMontosYCupos(unittest.TestCase):
     def test_monto(self):
         self.assertEqual(reglas.calcular_monto(30000, 2, 3), 180000)
 
+    def test_descuento(self):
+        self.assertEqual(reglas.calcular_descuento(180000, "", "Gs."), 0)
+        self.assertEqual(reglas.calcular_descuento(180000, "20.000", "Gs."), 20000)
+        self.assertEqual(reglas.calcular_descuento(180000, "10", "%"), 18000)
+
+    def test_descuento_invalido(self):
+        for valor, tipo in (("-5", "Gs."), ("diez", "%"), ("101", "%"), ("100", "%"),
+                            ("180000", "Gs."), ("200.000", "Gs."), ("5", "otro")):
+            with self.assertRaises(ErrorValidacion):
+                reglas.calcular_descuento(180000, valor, tipo)
+
     def test_cupo_suficiente(self):
         reglas.validar_cupo(5, 3, 2, "cuenta")      # no lanza error
 

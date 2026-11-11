@@ -6,7 +6,7 @@ from tkinter import messagebox, ttk
 from interfaz.comun import (Dialogo, crear_tabla, ejecutar_seguro, formato_gs,
                             id_seleccionado, llenar_tabla, tarjeta)
 from logica.errores import ErrorValidacion
-from logica.reglas import MESES_MAXIMOS, fecha_a_texto
+from logica.reglas import MESES_MAXIMOS, TIPOS_DESCUENTO, fecha_a_texto
 
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
          "septiembre", "octubre", "noviembre", "diciembre"]
@@ -161,6 +161,48 @@ class PestanaSuscripciones(ttk.Frame):
                 VentanaHistorial(self, self.tabla.item(str(suscripcion_id), "values")[0], pagos)
 
 
+def texto_resumen(datos):
+    """Texto del recuadro amarillo: vencimiento y lo que se va a cobrar."""
+    linea = f"Vence el {fecha_a_texto(datos['vencimiento'])}"
+    if datos["descuento"]:
+        return (f"{linea}\nSubtotal {formato_gs(datos['subtotal'])}  −  descuento "
+                f"{formato_gs(datos['descuento'])}  =  Total a cobrar: {formato_gs(datos['monto'])}")
+    return f"{linea}\nTotal a cobrar: {formato_gs(datos['monto'])}"
+
+
+def dos_lineas(texto):
+    """Mantiene el recuadro siempre con dos líneas para que el diálogo no cambie de alto."""
+    return texto if "\n" in texto else texto + "\n"
+
+
+class CampoDescuento(ttk.Frame):
+    """Descuento opcional: un número y si es en Gs. o en %, como en la app de ventas."""
+
+    def __init__(self, padre, al_cambiar):
+        super().__init__(padre)
+        self.tipo = "Gs."
+        self.al_cambiar = al_cambiar
+        self.valor = tk.StringVar()
+        ttk.Entry(self, textvariable=self.valor, width=12).pack(side="left")
+        self.botones = {}
+        for tipo in TIPOS_DESCUENTO:
+            boton = ttk.Button(self, text=tipo, command=lambda t=tipo: self.elegir(t))
+            boton.pack(side="left", padx=(6, 0))
+            self.botones[tipo] = boton
+        ttk.Label(self, text="opcional", style="Nota.TLabel").pack(side="left", padx=(10, 0))
+        self._pintar()
+        self.valor.trace_add("write", lambda *_: self.al_cambiar())
+
+    def _pintar(self):
+        for tipo, boton in self.botones.items():
+            boton.configure(style="ChipActivo.TButton" if tipo == self.tipo else "Chip.TButton")
+
+    def elegir(self, tipo):
+        self.tipo = tipo
+        self._pintar()
+        self.al_cambiar()
+
+
 class DialogoVenta(Dialogo):
     """Formulario de una venta nueva (el proceso principal del demo)."""
 
@@ -168,17 +210,27 @@ class DialogoVenta(Dialogo):
         super().__init__(padre, "Nueva venta")
         self.gestor = gestor
         self.al_guardar = al_guardar
-        self.clientes = gestor.listar_clientes()
         self.servicios = gestor.listar_servicios()
         self.cuentas = []
 
         c = self.cuerpo
-        ttk.Label(c, text="Nueva venta", style="Seccion.TLabel").grid(
-            row=0, column=0, columnspan=3, sticky="w")
-        ttk.Label(c, text="Venta de perfiles de una cuenta a un cliente.", style="Nota.TLabel").grid(
-            row=1, column=0, columnspan=3, sticky="w", pady=(0, 14))
-        self.cliente = self._combo(2, "Cliente",
-                                   [f"{x['nombre']}  ({x['telefono']})" for x in self.clientes])
+        ttk.Label(c, text="Nueva venta", style="Seccion.TLabel").grid(row=0, column=0, columnspan=2,
+                                                                    sticky="w", pady=(0, 8))
+
+        # ---- Cliente: buscador + lista que se filtra mientras se escribe
+        ttk.Label(c, text="Cliente").grid(row=2, column=0, sticky="nw", pady=(10, 5), padx=(0, 14))
+        caja = ttk.Frame(c)
+        caja.grid(row=2, column=1, sticky="ew", pady=5)
+        self.buscar = ttk.Entry(caja)
+        self.buscar.pack(fill="x")
+        ttk.Label(caja, text="Escriba parte del nombre o del teléfono y elija de la lista.",
+                  style="Nota.TLabel").pack(anchor="w", pady=(3, 4))
+        marco, self.tabla_clientes = crear_tabla(caja, [("nombre", "Nombre", 240), ("telefono", "Teléfono", 150)],
+                                                 alto=3)
+        marco.pack(fill="x")
+        self.buscar.bind("<KeyRelease>", self._filtrar_clientes)
+        self.buscar.bind("<Return>", self._elegir_primero)
+
         self.servicio = self._combo(3, "Servicio",
                                     [f"{s['nombre']}  —  {formato_gs(s['precio_mensual'])} por perfil/mes"
                                      for s in self.servicios])
@@ -186,41 +238,65 @@ class DialogoVenta(Dialogo):
         self.servicio.bind("<<ComboboxSelected>>", self._cargar_cuentas)
         self.cuenta.bind("<<ComboboxSelected>>", self._actualizar_resumen)
 
+        # ---- Perfiles, meses y fecha en una fila
         self.perfiles = tk.StringVar(value="1")
         self.meses = tk.StringVar(value="1")
         self.fecha = tk.StringVar(value=fecha_a_texto(date.today()))
         ttk.Label(c, text="Perfiles").grid(row=5, column=0, sticky="w", pady=5)
-        ttk.Spinbox(c, from_=1, to=6, textvariable=self.perfiles, width=8).grid(
-            row=5, column=1, sticky="w")
-        ttk.Label(c, text="Meses").grid(row=6, column=0, sticky="w", pady=5)
-        ttk.Spinbox(c, from_=1, to=MESES_MAXIMOS, textvariable=self.meses, width=8).grid(
-            row=6, column=1, sticky="w")
-        ttk.Label(c, text="Fecha de inicio").grid(row=7, column=0, sticky="w", pady=5)
-        ttk.Entry(c, textvariable=self.fecha, width=12).grid(row=7, column=1, sticky="w")
-        ttk.Label(c, text="dd/mm/aaaa", style="Nota.TLabel").grid(row=7, column=2, sticky="w")
+        fila = ttk.Frame(c)
+        fila.grid(row=5, column=1, sticky="w", pady=5)
+        ttk.Spinbox(fila, from_=1, to=6, textvariable=self.perfiles, width=5).pack(side="left")
+        ttk.Label(fila, text="Meses").pack(side="left", padx=(16, 6))
+        ttk.Spinbox(fila, from_=1, to=MESES_MAXIMOS, textvariable=self.meses, width=5).pack(side="left")
+        ttk.Label(fila, text="Inicio").pack(side="left", padx=(16, 6))
+        ttk.Entry(fila, textvariable=self.fecha, width=11).pack(side="left")
+        ttk.Label(fila, text="dd/mm/aaaa", style="Nota.TLabel").pack(side="left", padx=(6, 0))
         for variable in (self.perfiles, self.meses, self.fecha):
             variable.trace_add("write", self._actualizar_resumen)
 
-        self.resumen = ttk.Label(c, style="Resumen.TLabel")
-        self.resumen.grid(row=8, column=0, columnspan=3, sticky="ew", pady=(16, 4))
+        ttk.Label(c, text="Descuento").grid(row=6, column=0, sticky="w", pady=5)
+        self.resumen = ttk.Label(c, style="Resumen.TLabel", wraplength=520, justify="left")
+        self.descuento = CampoDescuento(c, self._actualizar_resumen)
+        self.descuento.grid(row=6, column=1, sticky="w", pady=5)
+        self.resumen.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(14, 4))
 
         botones = ttk.Frame(c)
-        botones.grid(row=9, column=0, columnspan=3, sticky="e", pady=(14, 0))
+        botones.grid(row=8, column=0, columnspan=2, sticky="e", pady=(14, 0))
         ttk.Button(botones, text="Cancelar", command=self.destroy).pack(side="right")
         ttk.Button(botones, text="Guardar venta", style="Accion.TButton",
                    command=self.guardar).pack(side="right", padx=8)
+        self._filtrar_clientes()
         self._actualizar_resumen()
+        self.buscar.focus_set()
 
     def _combo(self, fila, texto, valores):
         ttk.Label(self.cuerpo, text=texto).grid(row=fila, column=0, sticky="w", pady=5, padx=(0, 14))
         combo = ttk.Combobox(self.cuerpo, values=valores, state="readonly", width=50)
-        combo.grid(row=fila, column=1, columnspan=2, sticky="w", pady=5)
+        combo.grid(row=fila, column=1, sticky="w", pady=5)
         return combo
 
     @staticmethod
     def _id_elegido(combo, lista):
         indice = combo.current()
         return lista[indice]["id"] if indice >= 0 else None
+
+    def _filtrar_clientes(self, _evento=None):
+        """Busca en la base los clientes que coinciden con lo escrito (nombre o teléfono)."""
+        elegido = id_seleccionado(self.tabla_clientes)
+        ok, clientes = ejecutar_seguro(self, self.gestor.listar_clientes, self.buscar.get())
+        if not ok:
+            return
+        llenar_tabla(self.tabla_clientes, [(x["id"], (x["nombre"], x["telefono"]), None) for x in clientes])
+        if elegido is not None and self.tabla_clientes.exists(str(elegido)):
+            self.tabla_clientes.selection_set(str(elegido))       # se mantiene el ya elegido
+        elif len(clientes) == 1:
+            self.tabla_clientes.selection_set(str(clientes[0]["id"]))  # un solo resultado: se elige solo
+
+    def _elegir_primero(self, _evento=None):
+        filas = self.tabla_clientes.get_children()
+        if filas:
+            self.tabla_clientes.selection_set(filas[0])
+            self.tabla_clientes.see(filas[0])
 
     def _cargar_cuentas(self, _evento=None):
         servicio_id = self._id_elegido(self.servicio, self.servicios)
@@ -238,27 +314,28 @@ class DialogoVenta(Dialogo):
     def _actualizar_resumen(self, *_):
         cuenta_id = self._id_elegido(self.cuenta, self.cuentas)
         if cuenta_id is None:
-            self.resumen.configure(text="Elija el servicio y la cuenta para ver el vencimiento y el monto.")
+            self.resumen.configure(text=dos_lineas("Elija el servicio y la cuenta para ver el vencimiento y el monto."))
             return
         try:
-            vencimiento, monto = self.gestor.cotizar_venta(
-                cuenta_id, self.perfiles.get(), self.meses.get(), self.fecha.get())
-            self.resumen.configure(
-                text=f"Vence el {fecha_a_texto(vencimiento)}   ·   Monto a cobrar: {formato_gs(monto)}")
-        except ErrorValidacion:
-            self.resumen.configure(text="Complete perfiles, meses y una fecha válida para ver el resumen.")
+            datos = self.gestor.cotizar_venta(cuenta_id, self.perfiles.get(), self.meses.get(), self.fecha.get(),
+                                              self.descuento.valor.get(), self.descuento.tipo)
+            self.resumen.configure(text=texto_resumen(datos))
+        except ErrorValidacion as error:
+            self.resumen.configure(text=dos_lineas(str(error)))
 
     def guardar(self):
         ok, venta = ejecutar_seguro(
             self, self.gestor.registrar_venta,
-            self._id_elegido(self.cliente, self.clientes), self._id_elegido(self.cuenta, self.cuentas),
-            self.perfiles.get(), self.meses.get(), self.fecha.get())
+            id_seleccionado(self.tabla_clientes), self._id_elegido(self.cuenta, self.cuentas),
+            self.perfiles.get(), self.meses.get(), self.fecha.get(),
+            self.descuento.valor.get(), self.descuento.tipo)
         if not ok:
             return          # el formulario queda abierto para corregir; no se guardó nada
-        messagebox.showinfo("Venta registrada",
-                            "La venta se guardó correctamente.\n\n"
-                            f"Vence el {fecha_a_texto(venta['vencimiento'])}\n"
-                            f"Monto cobrado: {formato_gs(venta['monto'])}", parent=self)
+        detalle = f"Vence el {fecha_a_texto(venta['vencimiento'])}\n"
+        if venta["descuento"]:
+            detalle += f"Descuento: {formato_gs(venta['descuento'])}\n"
+        detalle += f"Monto cobrado: {formato_gs(venta['monto'])}"
+        messagebox.showinfo("Venta registrada", "La venta se guardó correctamente.\n\n" + detalle, parent=self)
         self.destroy()
         self.al_guardar(venta["id"])
 
@@ -286,13 +363,16 @@ class DialogoRenovar(Dialogo):
         ttk.Spinbox(c, from_=1, to=MESES_MAXIMOS, textvariable=self.meses, width=8).grid(
             row=5, column=1, sticky="w", pady=(12, 2))
         self.meses.trace_add("write", self._actualizar_resumen)
-        self.resumen = ttk.Label(c, style="Resumen.TLabel")
-        self.resumen.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(14, 6))
+        ttk.Label(c, text="Descuento").grid(row=6, column=0, sticky="w", pady=5)
+        self.resumen = ttk.Label(c, style="Resumen.TLabel", wraplength=480, justify="left")
+        self.descuento = CampoDescuento(c, self._actualizar_resumen)
+        self.descuento.grid(row=6, column=1, sticky="w", pady=5)
+        self.resumen.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(14, 6))
         ttk.Label(c, text="Si todavía no venció, se renueva desde su vencimiento; si ya venció, desde hoy.",
-                  style="Nota.TLabel").grid(row=7, column=0, columnspan=2, sticky="w")
+                  style="Nota.TLabel").grid(row=8, column=0, columnspan=2, sticky="w")
 
         botones = ttk.Frame(c)
-        botones.grid(row=8, column=0, columnspan=2, sticky="e", pady=(14, 0))
+        botones.grid(row=9, column=0, columnspan=2, sticky="e", pady=(14, 0))
         ttk.Button(botones, text="Cancelar", command=self.destroy).pack(side="right")
         ttk.Button(botones, text="Guardar renovación", style="Accion.TButton",
                    command=self.guardar).pack(side="right", padx=8)
@@ -300,18 +380,21 @@ class DialogoRenovar(Dialogo):
 
     def _actualizar_resumen(self, *_):
         try:
-            datos = self.gestor.cotizar_renovacion(self.suscripcion_id, self.meses.get())
-            self.resumen.configure(text=f"Nuevo vencimiento: {fecha_a_texto(datos['vencimiento'])}   ·   "
-                                        f"Monto: {formato_gs(datos['monto'])}")
+            datos = self.gestor.cotizar_renovacion(self.suscripcion_id, self.meses.get(),
+                                                   self.descuento.valor.get(), self.descuento.tipo)
+            self.resumen.configure(text=texto_resumen(datos).replace("Vence el", "Nuevo vencimiento:"))
         except ErrorValidacion as error:
-            self.resumen.configure(text=str(error))
+            self.resumen.configure(text=dos_lineas(str(error)))
 
     def guardar(self):
-        ok, datos = ejecutar_seguro(self, self.gestor.renovar, self.suscripcion_id, self.meses.get())
+        ok, datos = ejecutar_seguro(self, self.gestor.renovar, self.suscripcion_id, self.meses.get(),
+                                    self.descuento.valor.get(), self.descuento.tipo)
         if ok:
-            messagebox.showinfo("Renovación registrada",
-                                f"Nuevo vencimiento: {fecha_a_texto(datos['vencimiento'])}\n"
-                                f"Monto cobrado: {formato_gs(datos['monto'])}", parent=self)
+            detalle = f"Nuevo vencimiento: {fecha_a_texto(datos['vencimiento'])}\n"
+            if datos["descuento"]:
+                detalle += f"Descuento: {formato_gs(datos['descuento'])}\n"
+            detalle += f"Monto cobrado: {formato_gs(datos['monto'])}"
+            messagebox.showinfo("Renovación registrada", detalle, parent=self)
             self.destroy()
             self.al_guardar(self.suscripcion_id)
 
@@ -320,13 +403,14 @@ class VentanaHistorial(Dialogo):
     def __init__(self, padre, cliente, pagos):
         super().__init__(padre, "Historial de pagos")
         ttk.Label(self.cuerpo, text=f"Pagos de {cliente}", style="Seccion.TLabel").pack(anchor="w")
-        columnas = [("fecha", "Fecha", 95), ("concepto", "Concepto", 105), ("meses", "Meses", 65),
-                    ("monto", "Monto", 115), ("usuario", "Registrado por", 165)]
+        columnas = [("fecha", "Fecha", 95), ("concepto", "Concepto", 105), ("meses", "Meses", 60),
+                    ("descuento", "Descuento", 105), ("monto", "Cobrado", 115), ("usuario", "Registrado por", 160)]
         marco, tabla = crear_tabla(self.cuerpo, columnas, alto=7)
         marco.pack(fill="both", expand=True, pady=12)
         llenar_tabla(tabla, [
-            (indice, (fecha_a_texto(p["fecha"]), p["concepto"], p["meses"], formato_gs(p["monto"]),
-                      p["registrado_por"]), None)
+            (indice, (fecha_a_texto(p["fecha"]), p["concepto"], p["meses"],
+                      formato_gs(p["descuento"]) if p["descuento"] else "-",
+                      formato_gs(p["monto"]), p["registrado_por"]), None)
             for indice, p in enumerate(pagos)])
         total = sum(p["monto"] for p in pagos)
         ttk.Label(self.cuerpo, text=f"Total cobrado: {formato_gs(total)}",

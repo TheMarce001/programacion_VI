@@ -91,7 +91,7 @@ class Repositorio:
         patron = "%" + texto + "%"
         sql = """SELECT id, nombre, telefono, correo
                  FROM clientes
-                 WHERE nombre LIKE ? OR telefono LIKE ?
+                 WHERE sin_tildes(nombre) LIKE sin_tildes(?) OR telefono LIKE ?
                  ORDER BY nombre"""
         return self.conexion.execute(sql, (patron, patron)).fetchall()
 
@@ -117,7 +117,8 @@ class Repositorio:
                  JOIN clientes  cl ON cl.id = su.cliente_id
                  JOIN cuentas   cu ON cu.id = su.cuenta_id
                  JOIN servicios se ON se.id = cu.servicio_id
-                 WHERE cl.nombre LIKE ? OR cl.telefono LIKE ? OR se.nombre LIKE ?
+                 WHERE sin_tildes(cl.nombre) LIKE sin_tildes(?) OR cl.telefono LIKE ?
+                       OR se.nombre LIKE ?
                  ORDER BY su.vencimiento"""
         return self.conexion.execute(sql, (patron, patron, patron)).fetchall()
 
@@ -133,28 +134,32 @@ class Repositorio:
         return self.conexion.execute(sql, (suscripcion_id,)).fetchone()
 
     def insertar_venta(self, cliente_id, cuenta_id, perfiles, fecha_inicio, vencimiento,
-                       usuario_id, meses, monto):
+                       usuario_id, meses, monto, descuento=0):
         """CONSULTA DE INSERCIÓN del demo. Guarda la suscripción y su pago en
         UNA transacción: se guardan las dos filas o ninguna."""
         sql_suscripcion = """INSERT INTO suscripciones
                                  (cliente_id, cuenta_id, perfiles, fecha_inicio, vencimiento)
                              VALUES (?, ?, ?, ?, ?)"""
-        sql_pago = """INSERT INTO pagos (suscripcion_id, usuario_id, fecha, concepto, meses, monto)
-                      VALUES (?, ?, ?, 'VENTA', ?, ?)"""
+        sql_pago = """INSERT INTO pagos (suscripcion_id, usuario_id, fecha, concepto, meses,
+                                         descuento, monto)
+                      VALUES (?, ?, ?, 'VENTA', ?, ?, ?)"""
         with self.conexion:
             cursor = self.conexion.execute(
                 sql_suscripcion, (cliente_id, cuenta_id, perfiles, fecha_inicio, vencimiento))
             suscripcion_id = cursor.lastrowid
-            self.conexion.execute(sql_pago, (suscripcion_id, usuario_id, fecha_inicio, meses, monto))
+            self.conexion.execute(sql_pago, (suscripcion_id, usuario_id, fecha_inicio, meses,
+                                             descuento, monto))
         return suscripcion_id
 
-    def registrar_renovacion(self, suscripcion_id, nuevo_vencimiento, usuario_id, fecha, meses, monto):
+    def registrar_renovacion(self, suscripcion_id, nuevo_vencimiento, usuario_id, fecha, meses, monto,
+                             descuento=0):
         sql_suscripcion = "UPDATE suscripciones SET vencimiento = ? WHERE id = ? AND estado = 'ACTIVA'"
-        sql_pago = """INSERT INTO pagos (suscripcion_id, usuario_id, fecha, concepto, meses, monto)
-                      VALUES (?, ?, ?, 'RENOVACION', ?, ?)"""
+        sql_pago = """INSERT INTO pagos (suscripcion_id, usuario_id, fecha, concepto, meses,
+                                         descuento, monto)
+                      VALUES (?, ?, ?, 'RENOVACION', ?, ?, ?)"""
         with self.conexion:
             self.conexion.execute(sql_suscripcion, (nuevo_vencimiento, suscripcion_id))
-            self.conexion.execute(sql_pago, (suscripcion_id, usuario_id, fecha, meses, monto))
+            self.conexion.execute(sql_pago, (suscripcion_id, usuario_id, fecha, meses, descuento, monto))
 
     def dar_de_baja(self, suscripcion_id, fecha_baja):
         sql = """UPDATE suscripciones SET estado = 'BAJA', fecha_baja = ?
@@ -169,7 +174,7 @@ class Repositorio:
         return self.conexion.execute(sql, (desde, hasta)).fetchone()[0]
 
     def listar_pagos(self, suscripcion_id):
-        sql = """SELECT p.fecha, p.concepto, p.meses, p.monto, u.nombre AS registrado_por
+        sql = """SELECT p.fecha, p.concepto, p.meses, p.descuento, p.monto, u.nombre AS registrado_por
                  FROM pagos p
                  JOIN usuarios u ON u.id = p.usuario_id
                  WHERE p.suscripcion_id = ?

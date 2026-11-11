@@ -71,6 +71,29 @@ def calcular_monto(precio_mensual, perfiles, meses):
     return precio_mensual * perfiles * meses
 
 
+TIPOS_DESCUENTO = ("Gs.", "%")
+
+
+def calcular_descuento(subtotal, valor, tipo="Gs."):
+    """REGLA: el descuento puede ser un monto en Gs. o un porcentaje, como en la
+    app de ventas. No puede ser negativo, el porcentaje no pasa de 100 y el
+    total a cobrar tiene que quedar mayor a cero. Devuelve los Gs. a descontar."""
+    texto = str(valor or "").strip()
+    if texto in ("", "0"):
+        return 0
+    if tipo == "%":
+        porcentaje = validar_entero(texto, "El porcentaje de descuento", 0, 100)
+        descuento = round(subtotal * porcentaje / 100)
+    elif tipo == "Gs.":
+        descuento = validar_entero(texto.replace(".", ""), "El descuento", 0)
+    else:
+        raise ErrorValidacion("Elija si el descuento es en Gs. o en %.")
+    if descuento >= subtotal:
+        total = f"Gs. {subtotal:,}".replace(",", ".")
+        raise ErrorValidacion(f"El descuento no puede ser igual o mayor que el total ({total}).")
+    return descuento
+
+
 def validar_cupo(capacidad, ocupados, perfiles, cuenta):
     """REGLA PRINCIPAL: una cuenta no puede tener más perfiles vendidos que su
     capacidad (Netflix 5, Disney+ 6, ...). Evita la sobreventa."""

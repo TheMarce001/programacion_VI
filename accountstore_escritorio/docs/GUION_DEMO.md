@@ -4,7 +4,7 @@ Cada paso indica qué **indicador de la rúbrica** cubre. Conviene ensayarlo 2 o
 
 **La noche anterior (en la notebook con la que vas a presentar)**
 - Copiar el proyecto y ejecutar `python main.py` una vez, para comprobar que abre. Ejecutar también
-  `python -m unittest -v`: tienen que pasar las 39 pruebas.
+  `python -m unittest -v`: tienen que pasar las 45 pruebas.
 - Llevar una copia de respaldo (pendrive y GitHub) por si falla la notebook.
 - Recorrer este guion completo al menos una vez, en voz alta y con el reloj.
 
@@ -40,8 +40,11 @@ Con el [INFORME](INFORME.md) abierto:
 
 7. **Cuentas y servicios:** `netflix01` está **LLENA (5 de 5)** y `netflix02` tiene 5 libres.
 8. **Suscripciones → Nueva venta:**
-   - Cliente **Jorge Villalba**, servicio **Netflix**. El sistema propone `netflix02` porque tiene lugar.
+   - En **Cliente** escribir `jorge`: la lista se filtra y queda elegido **Jorge Villalba**.
+   - Servicio **Netflix**. El sistema propone `netflix02` porque tiene lugar.
    - Perfiles **2**, meses **3**. Mostrar que calcula el vencimiento y **Gs. 180.000** (RN2, RN4).
+   - *(Opcional)* Descuento `10` con **%** → *Subtotal 180.000 − descuento 18.000 = Total 162.000*
+     (RN9). Borrar el descuento antes de seguir, para que los montos del guion coincidan.
 9. **Dato inválido primero** (3.4):
    - Cambiar la cuenta a **netflix01** y guardar → *"La cuenta … está llena (5 de 5)"* (RN1).
    - Volver a netflix02, poner meses **15** y guardar → *"La cantidad de meses debe estar entre 1 y 12"*.
@@ -81,7 +84,7 @@ Con el [INFORME](INFORME.md) abierto:
 
 ## Parte 6 — IA, estado y planificación (1 min) · indicadores 6.3, 7.1 y 7.2
 
-21. Uso de IA y cómo lo verifiqué: `python -m unittest -v` → **39 pruebas OK** (§6).
+21. Uso de IA y cómo lo verifiqué: `python -m unittest -v` → **45 pruebas OK** (§6).
 22. Funcionalidades terminadas, parciales y pendientes, y plan con fechas (§7).
 
 ---
@@ -104,6 +107,7 @@ estas antes, a mano, y comprobar cada una ejecutando el programa y `python -m un
 | Nuevo servicio con otra capacidad | desde la sección **Cuentas y servicios**, o en `logica/datos_ejemplo.py` |
 | Precio = precio × perfiles × meses con 10 % de descuento desde 6 meses | `logica/reglas.py` → `calcular_monto` |
 | Agregar un país al selector de teléfono | `logica/reglas.py` → diccionario `PAISES` (nombre, código y cantidad de dígitos) |
+| Descuento máximo de 30 % | `logica/reglas.py` → `calcular_descuento`: `validar_entero(texto, "...", 0, 30)` |
 
 **Preguntas probables:**
 - ¿Por qué el hash lleva sal? → Para que dos contraseñas iguales tengan hashes distintos y no sirvan

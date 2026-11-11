@@ -61,5 +61,6 @@ CREATE TABLE IF NOT EXISTS pagos (
     fecha           TEXT    NOT NULL,
     concepto        TEXT    NOT NULL CHECK (concepto IN ('VENTA', 'RENOVACION')),
     meses           INTEGER NOT NULL CHECK (meses BETWEEN 1 AND 12),
-    monto           INTEGER NOT NULL CHECK (monto > 0)
+    descuento       INTEGER NOT NULL DEFAULT 0 CHECK (descuento >= 0),   -- Gs. descontados
+    monto           INTEGER NOT NULL CHECK (monto > 0)                   -- total cobrado (ya con descuento)
 );

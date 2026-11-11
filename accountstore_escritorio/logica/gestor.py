@@ -201,24 +201,27 @@ class Gestor:
         s["vencimiento"] = date.fromisoformat(s["vencimiento"])
         return s
 
-    def cotizar_venta(self, cuenta_id, perfiles, meses, fecha_inicio):
-        """Calcula vencimiento y monto SIN guardar (para mostrarlos en pantalla)."""
+    def cotizar_venta(self, cuenta_id, perfiles, meses, fecha_inicio, descuento="", tipo_descuento="Gs."):
+        """Calcula vencimiento, subtotal, descuento y total SIN guardar (para la pantalla)."""
         self._exigir_sesion()
         cuenta = self._cuenta(cuenta_id)
         perfiles = reglas.validar_entero(perfiles, "La cantidad de perfiles", 1)
         meses = reglas.validar_entero(meses, "La cantidad de meses", 1, reglas.MESES_MAXIMOS)
         inicio = reglas.convertir_fecha(fecha_inicio)
-        return (reglas.sumar_meses(inicio, meses),
-                reglas.calcular_monto(cuenta["precio_mensual"], perfiles, meses))
+        subtotal = reglas.calcular_monto(cuenta["precio_mensual"], perfiles, meses)
+        rebaja = reglas.calcular_descuento(subtotal, descuento, tipo_descuento)
+        return {"vencimiento": reglas.sumar_meses(inicio, meses), "subtotal": subtotal,
+                "descuento": rebaja, "monto": subtotal - rebaja}
 
-    def registrar_venta(self, cliente_id, cuenta_id, perfiles, meses, fecha_inicio, hoy=None):
+    def registrar_venta(self, cliente_id, cuenta_id, perfiles, meses, fecha_inicio,
+                        descuento="", tipo_descuento="Gs.", hoy=None):
         """PROCESO PRINCIPAL: vender perfiles de una cuenta a un cliente."""
         exigir_permiso(self.usuario, "registrar_venta")
         hoy = hoy or date.today()
 
         # 1) Validar los datos recibidos de la pantalla
         if cliente_id is None:
-            raise ErrorValidacion("Seleccione un cliente.")
+            raise ErrorValidacion("Busque y seleccione un cliente de la lista.")
         if cuenta_id is None:
             raise ErrorValidacion("Seleccione el servicio y la cuenta.")
         perfiles = reglas.validar_entero(perfiles, "La cantidad de perfiles", 1)
@@ -231,35 +234,39 @@ class Gestor:
         cuenta = self._cuenta(cuenta_id)
         reglas.validar_cupo(cuenta["capacidad"], cuenta["ocupados"], perfiles, cuenta["correo"])
         vencimiento = reglas.sumar_meses(inicio, meses)
-        monto = reglas.calcular_monto(cuenta["precio_mensual"], perfiles, meses)
+        subtotal = reglas.calcular_monto(cuenta["precio_mensual"], perfiles, meses)
+        rebaja = reglas.calcular_descuento(subtotal, descuento, tipo_descuento)
+        monto = subtotal - rebaja
 
         # 3) Guardar la suscripción y su pago (una sola transacción)
         try:
             nuevo_id = self.repo.insertar_venta(
                 cliente_id, cuenta_id, perfiles, inicio.isoformat(), vencimiento.isoformat(),
-                self.usuario["id"], meses, monto)
+                self.usuario["id"], meses, monto, rebaja)
         except sqlite3.IntegrityError as error:
             raise _error_de_base(error, "La venta ya estaba registrada.") from error
-        return {"id": nuevo_id, "vencimiento": vencimiento, "monto": monto}
+        return {"id": nuevo_id, "vencimiento": vencimiento, "subtotal": subtotal,
+                "descuento": rebaja, "monto": monto}
 
-    def cotizar_renovacion(self, suscripcion_id, meses, hoy=None):
+    def cotizar_renovacion(self, suscripcion_id, meses, descuento="", tipo_descuento="Gs.", hoy=None):
         hoy = hoy or date.today()
         s = self.obtener_suscripcion(suscripcion_id)
         if s["estado"] == "BAJA":
             raise ErrorValidacion("Esta suscripción está dada de baja: registre una venta nueva.")
         meses = reglas.validar_entero(meses, "La cantidad de meses", 1, reglas.MESES_MAXIMOS)
         desde = reglas.inicio_renovacion(s["vencimiento"], hoy)
-        return {"meses": meses,
-                "vencimiento": reglas.sumar_meses(desde, meses),
-                "monto": reglas.calcular_monto(s["precio_mensual"], s["perfiles"], meses)}
+        subtotal = reglas.calcular_monto(s["precio_mensual"], s["perfiles"], meses)
+        rebaja = reglas.calcular_descuento(subtotal, descuento, tipo_descuento)
+        return {"meses": meses, "vencimiento": reglas.sumar_meses(desde, meses),
+                "subtotal": subtotal, "descuento": rebaja, "monto": subtotal - rebaja}
 
-    def renovar(self, suscripcion_id, meses, hoy=None):
+    def renovar(self, suscripcion_id, meses, descuento="", tipo_descuento="Gs.", hoy=None):
         exigir_permiso(self.usuario, "renovar")
         hoy = hoy or date.today()
-        datos = self.cotizar_renovacion(suscripcion_id, meses, hoy)
+        datos = self.cotizar_renovacion(suscripcion_id, meses, descuento, tipo_descuento, hoy)
         self.repo.registrar_renovacion(suscripcion_id, datos["vencimiento"].isoformat(),
                                        self.usuario["id"], hoy.isoformat(),
-                                       datos["meses"], datos["monto"])
+                                       datos["meses"], datos["monto"], datos["descuento"])
         return datos
 
     def dar_de_baja(self, suscripcion_id, hoy=None):

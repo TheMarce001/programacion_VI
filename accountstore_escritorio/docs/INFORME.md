@@ -58,8 +58,9 @@ para reemplazar el control manual en planillas y evitar sobreventas y datos inco
 
 1. **Inicio y cierre de sesión** con contraseñas protegidas mediante hash y tres roles con permisos.
 2. **Suscripciones (proceso principal):** tarjetas de resumen (activas, a vencer, vencidas y lo
-   cobrado en el mes), nueva venta, renovación, baja, búsqueda, filtro por estado
-   (ACTIVO / A VENCER / VENCIDO / BAJA) e historial de pagos.
+   cobrado en el mes), nueva venta con buscador de clientes y descuento opcional (en Gs. o en %),
+   renovación, baja, búsqueda, filtro por estado (ACTIVO / A VENCER / VENCIDO / BAJA) e historial
+   de pagos.
 3. **Clientes:** alta, búsqueda y eliminación (solo si no tiene suscripciones).
 4. **Cuentas y servicios:** alta y eliminación de servicios (capacidad y precio) y de cuentas, con
    la ocupación de perfiles de cada cuenta. Solo se elimina lo que no está en uso: un servicio sin
@@ -117,10 +118,15 @@ fondo claro. La ventana abre maximizada y se adapta a pantallas chicas.
 
    ![Suscripciones](img/02_suscripciones.png)
 
-4. **Nueva venta:** se elige el cliente, el servicio y la cuenta (muestra los perfiles libres), los
-   perfiles, los meses y la fecha. Antes de guardar se muestran el vencimiento y el monto calculados.
+4. **Nueva venta:** el cliente se busca escribiendo parte del nombre o del teléfono, y la lista se
+   filtra mientras se escribe (encuentra "gomez" aunque el nombre sea "Gómez"). Después se eligen el
+   servicio y la cuenta (muestra los perfiles libres), los perfiles, los meses, la fecha y, si hace
+   falta, un descuento en Gs. o en %. Antes de guardar se muestran el vencimiento, el subtotal, el
+   descuento y el total a cobrar.
 
    ![Nueva venta](img/03_nueva_venta.png)
+
+   ![Venta con descuento](img/14_venta_con_descuento.png)
 
 5. **Clientes:** formulario de alta a la izquierda y lista con buscador a la derecha.
 
@@ -188,6 +194,7 @@ erDiagram
         text fecha
         text concepto
         int meses
+        int descuento
         int monto
     }
 ```
@@ -209,11 +216,12 @@ El esquema completo está en [`datos/esquema.sql`](../datos/esquema.sql).
 | **RN1** | **Capacidad de la cuenta:** no se pueden vender más perfiles que los libres de la cuenta (Netflix 5, Disney+ 6…). Los perfiles ocupados son la suma de las suscripciones **ACTIVAS** de esa cuenta. | `logica/reglas.py → validar_cupo` |
 | RN2 | **Vencimiento** = fecha de inicio + meses pagados, como `FECHA.MES` de la planilla: 31/01 + 1 mes = 28/02. | `reglas.sumar_meses` |
 | RN3 | **Estado por días** (igual que en la planilla): más de 3 días → ACTIVO; de 1 a 3 → A VENCER; 0 o menos → VENCIDO. | `reglas.estado_por_dias` |
-| RN4 | **Monto** = precio mensual × perfiles × meses. Una venta o renovación es de 1 a 12 meses. | `reglas.calcular_monto` |
+| RN4 | **Monto** = precio mensual × perfiles × meses − descuento. Una venta o renovación es de 1 a 12 meses. | `reglas.calcular_monto` |
 | RN5 | **Renovación sin perder días:** si todavía no venció, se renueva desde el vencimiento; si ya venció, desde hoy. | `reglas.inicio_renovacion` |
 | RN6 | **Los perfiles solo se liberan con la baja:** una suscripción vencida sigue ocupando su lugar hasta que alguien con permiso la da de baja. | consulta de `repositorio.listar_cuentas` |
 | RN7 | **Permisos por rol:** "Pagos y vencimientos" no puede dar de baja, eliminar clientes, tocar cuentas ni crear usuarios. | `logica/permisos.py` |
 | RN8 | **Un teléfono = un cliente, con código de país:** se elige el país (Paraguay por defecto, igual que en la app de ventas) y el número se guarda en formato internacional: `0981 123 456` → `+595981123456`; un número de Uruguay `099 555 777` → `+59899555777`. Así sirve para WhatsApp, se aceptan clientes extranjeros y el mismo número no puede repetirse aunque se escriba distinto. | `reglas.normalizar_telefono` + `UNIQUE` |
+| RN9 | **Descuento:** en una venta o renovación se puede descontar un monto en Gs. o un porcentaje, como en la app de ventas. No puede ser negativo, el porcentaje no pasa de 100 % y el total a cobrar tiene que quedar mayor a cero. Se guarda en el pago cuánto se descontó. | `reglas.calcular_descuento` |
 
 ---
 
@@ -273,7 +281,7 @@ puede eliminar un cliente que tiene suscripciones.
 |---|---|---|
 | `NOT NULL` | `clientes.telefono` | Registros incompletos. |
 | `UNIQUE` | `clientes.telefono`, `usuarios.usuario`, `servicios.nombre` (con `COLLATE NOCASE`: "netflix" y "Netflix" son el mismo), `(servicio_id, correo)` en cuentas | Duplicados. |
-| `CHECK` | `perfiles >= 1`, `capacidad > 0`, `monto > 0`, `meses BETWEEN 1 AND 12`, `vencimiento > fecha_inicio`, `rol IN (…)`, `estado IN ('ACTIVA','BAJA')`, `telefono GLOB '+[0-9]*'` (formato internacional) | Valores imposibles. |
+| `CHECK` | `perfiles >= 1`, `capacidad > 0`, `monto > 0`, `meses BETWEEN 1 AND 12`, `vencimiento > fecha_inicio`, `rol IN (…)`, `estado IN ('ACTIVA','BAJA')`, `telefono GLOB '+[0-9]*'` (formato internacional), `descuento >= 0` | Valores imposibles. |
 | `FOREIGN KEY … RESTRICT` | ver 4.1 | Referencias a registros inexistentes y borrados que dejan "huérfanos". |
 
 **Demostración:**
@@ -315,17 +323,20 @@ La prueba automática `test_los_datos_permanecen_al_cerrar_y_abrir` lo comprueba
 sql_suscripcion = """INSERT INTO suscripciones
                          (cliente_id, cuenta_id, perfiles, fecha_inicio, vencimiento)
                      VALUES (?, ?, ?, ?, ?)"""
-sql_pago = """INSERT INTO pagos (suscripcion_id, usuario_id, fecha, concepto, meses, monto)
-              VALUES (?, ?, ?, 'VENTA', ?, ?)"""
+sql_pago = """INSERT INTO pagos (suscripcion_id, usuario_id, fecha, concepto, meses,
+                                 descuento, monto)
+              VALUES (?, ?, ?, 'VENTA', ?, ?, ?)"""
 with self.conexion:                                   # transacción
     cursor = self.conexion.execute(sql_suscripcion, (cliente_id, cuenta_id, perfiles,
                                                      fecha_inicio, vencimiento))
     suscripcion_id = cursor.lastrowid                 # id que SQLite asignó
-    self.conexion.execute(sql_pago, (suscripcion_id, usuario_id, fecha_inicio, meses, monto))
+    self.conexion.execute(sql_pago, (suscripcion_id, usuario_id, fecha_inicio, meses,
+                                     descuento, monto))
 ```
 
 - Cada `?` es un **parámetro**: el valor viaja aparte y nunca se mezcla con el texto SQL.
 - `cursor.lastrowid` devuelve el `id` de la suscripción recién creada, que se usa como FK del pago.
+- En el pago se guarda el descuento aplicado y el monto cobrado (ya con el descuento).
 - `with self.conexion:` hace que las dos inserciones sean **una transacción**: si falla la segunda,
   se deshace la primera (`ROLLBACK`). No puede quedar una venta sin su pago.
 
@@ -338,12 +349,15 @@ FROM suscripciones su
 JOIN clientes  cl ON cl.id = su.cliente_id      -- FK -> nombre y teléfono del cliente
 JOIN cuentas   cu ON cu.id = su.cuenta_id       -- FK -> correo de la cuenta
 JOIN servicios se ON se.id = cu.servicio_id     -- FK -> nombre del servicio
-WHERE cl.nombre LIKE ? OR cl.telefono LIKE ? OR se.nombre LIKE ?
+WHERE sin_tildes(cl.nombre) LIKE sin_tildes(?) OR cl.telefono LIKE ?
+      OR se.nombre LIKE ?
 ORDER BY su.vencimiento
 ```
 
 - Los `JOIN` usan las claves foráneas para traer datos de las 4 tablas en una sola consulta.
-- `LIKE ?` con `%texto%` permite el buscador (parametrizado).
+- `LIKE ?` con `%texto%` permite el buscador (parametrizado). `sin_tildes` es una función propia
+  registrada en SQLite (`datos/conexion.py`): compara sin tildes ni mayúsculas, así "ramirez"
+  encuentra "Ramírez".
 - `ORDER BY su.vencimiento` muestra primero lo que vence antes.
 - Los días restantes y el estado (ACTIVO / A VENCER / VENCIDO) **no se guardan**: los calcula la
   lógica con la fecha de hoy (RN3), así nunca quedan desactualizados.
@@ -440,7 +454,7 @@ código en capas y de este informe.
 
 **Cómo verifiqué el resultado:**
 
-1. Ejecuté las **39 pruebas automáticas** (`python -m unittest -v`) y todas pasaron. Las pruebas
+1. Ejecuté las **45 pruebas automáticas** (`python -m unittest -v`) y todas pasaron. Las pruebas
    comprueban las reglas de negocio (fin de mes, estados, capacidad), los permisos, las
    restricciones de la base y la persistencia.
 2. Comparé las reglas con mi sistema real: el estado por días (> 3 ACTIVO, 1 a 3 A VENCER,
@@ -466,7 +480,8 @@ código en capas y de este informe.
 | ✅ **Terminado** | Interfaz con la identidad de AccountStore PY (logo, colores, menú lateral), adaptable a pantallas chicas. |
 | ✅ **Terminado** | Alta de clientes, servicios, cuentas y usuarios; ocupación de cuentas; eliminación de servicios y cuentas que no están en uso. |
 | ✅ **Terminado** | Clientes de otros países: selector de país y teléfono guardado con código internacional. |
-| ✅ **Terminado** | Restricciones de base (PK, FK, UNIQUE, CHECK) y 39 pruebas automáticas. |
+| ✅ **Terminado** | Descuento en ventas y renovaciones (en Gs. o en %) y buscador de clientes sin tildes en la venta. |
+| ✅ **Terminado** | Restricciones de base (PK, FK, UNIQUE, CHECK) y 45 pruebas automáticas. |
 | 🟡 **Parcial** | Clientes: se cargan, buscan y eliminan, pero **no se editan**. |
 | 🟡 **Parcial** | Usuarios: se crean, pero **no se pueden desactivar ni cambiar su contraseña** desde la interfaz (la columna `activo` ya existe y el login la respeta). |
 | ⏳ **Pendiente** | Bloqueo temporal tras varios intentos fallidos de inicio de sesión. |
