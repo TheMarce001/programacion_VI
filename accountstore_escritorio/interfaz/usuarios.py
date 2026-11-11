@@ -1,42 +1,38 @@
-"""Pestaña Usuarios: lista de usuarios y alta de usuarios (solo Administrador)."""
+"""Sección Usuarios: lista de usuarios y alta de usuarios (solo Administrador)."""
 from tkinter import messagebox, ttk
 
-from interfaz.comun import crear_tabla, ejecutar_seguro, llenar_tabla
+from interfaz.comun import campo, crear_tabla, ejecutar_seguro, llenar_tabla, tarjeta
 from logica.permisos import ROLES
 
-COLUMNAS = [("usuario", "Usuario", 120), ("nombre", "Nombre", 200), ("rol", "Rol", 170),
+COLUMNAS = [("usuario", "Usuario", 130), ("nombre", "Nombre", 220), ("rol", "Rol", 190),
             ("estado", "Estado", 90)]
 
 
 class PestanaUsuarios(ttk.Frame):
+    TITULO = "Usuarios"
+    DESCRIPCION = "Quién puede entrar al sistema y con qué rol. Solo el Administrador crea usuarios."
+
     def __init__(self, padre, gestor):
-        super().__init__(padre, padding=12)
+        super().__init__(padre)
         self.gestor = gestor
 
-        formulario = ttk.LabelFrame(self, text="Nuevo usuario", padding=14)
-        formulario.pack(side="left", fill="y", padx=(0, 12))
-        self.usuario = self._campo(formulario, 0, "Usuario")
-        self.nombre = self._campo(formulario, 2, "Nombre y apellido")
-        ttk.Label(formulario, text="Rol").grid(row=4, column=0, sticky="w")
+        formulario = tarjeta(self, "Nuevo usuario", padding=18)
+        formulario.pack(side="left", fill="y", padx=(0, 16))
+        self.usuario = campo(formulario, "Usuario")
+        self.nombre = campo(formulario, "Nombre y apellido")
+        ttk.Label(formulario, text="Rol", style="Tarjeta.TLabel").pack(anchor="w")
         self.rol = ttk.Combobox(formulario, values=list(ROLES.values()), state="readonly", width=30)
-        self.rol.grid(row=5, column=0, sticky="ew", pady=(2, 10))
-        self.clave = self._campo(formulario, 6, "Contraseña", oculto=True)
-        self.confirmacion = self._campo(formulario, 8, "Repetir contraseña", oculto=True)
+        self.rol.pack(fill="x", pady=(3, 10))
+        self.clave = campo(formulario, "Contraseña", oculto=True)
+        self.confirmacion = campo(formulario, "Repetir contraseña", oculto=True)
         ttk.Button(formulario, text="Crear usuario", style="Accion.TButton",
-                   command=self.guardar).grid(row=10, column=0, sticky="ew", pady=(6, 10))
-        ttk.Label(formulario, style="Nota.TLabel", wraplength=230, justify="left",
-                  text="Mínimo 8 caracteres con letras y números. La contraseña se guarda como "
-                       "hash PBKDF2-SHA256 con sal: nunca en texto plano.").grid(row=11, column=0, sticky="w")
+                   command=self.guardar).pack(fill="x", pady=(2, 10))
+        ttk.Label(formulario, style="TarjetaNota.TLabel", wraplength=270, justify="left",
+                  text="Mínimo 8 caracteres, con letras y números. Se guarda como hash "
+                       "PBKDF2 con sal, nunca en texto plano.").pack(anchor="w")
 
-        marco, self.tabla = crear_tabla(self, COLUMNAS, alto=16)
+        marco, self.tabla = crear_tabla(self, COLUMNAS, alto=12)
         marco.pack(side="left", fill="both", expand=True)
-
-    @staticmethod
-    def _campo(padre, fila, texto, oculto=False):
-        ttk.Label(padre, text=texto).grid(row=fila, column=0, sticky="w")
-        entrada = ttk.Entry(padre, width=32, show="•" if oculto else "")
-        entrada.grid(row=fila + 1, column=0, sticky="ew", pady=(2, 10))
-        return entrada
 
     def actualizar(self, _evento=None):
         ok, usuarios = ejecutar_seguro(self, self.gestor.listar_usuarios)

@@ -155,6 +155,11 @@ class Repositorio:
             self.conexion.execute(sql, (fecha_baja, suscripcion_id))
 
     # --------------------------------------------------------------- pagos
+    def total_cobrado(self, desde, hasta):
+        """Suma de los pagos entre dos fechas (AAAA-MM-DD), ambas incluidas."""
+        sql = "SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE fecha BETWEEN ? AND ?"
+        return self.conexion.execute(sql, (desde, hasta)).fetchone()[0]
+
     def listar_pagos(self, suscripcion_id):
         sql = """SELECT p.fecha, p.concepto, p.meses, p.monto, u.nombre AS registrado_por
                  FROM pagos p

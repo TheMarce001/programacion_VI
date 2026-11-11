@@ -57,8 +57,9 @@ para reemplazar el control manual en planillas y evitar sobreventas y datos inco
 **Módulos incluidos**
 
 1. **Inicio y cierre de sesión** con contraseñas protegidas mediante hash y tres roles con permisos.
-2. **Suscripciones (proceso principal):** nueva venta, renovación, baja, búsqueda, filtro por
-   estado (ACTIVO / A VENCER / VENCIDO / BAJA) e historial de pagos.
+2. **Suscripciones (proceso principal):** tarjetas de resumen (activas, a vencer, vencidas y lo
+   cobrado en el mes), nueva venta, renovación, baja, búsqueda, filtro por estado
+   (ACTIVO / A VENCER / VENCIDO / BAJA) e historial de pagos.
 3. **Clientes:** alta, búsqueda y eliminación (solo si no tiene suscripciones).
 4. **Cuentas y servicios:** alta de servicios (capacidad y precio) y de cuentas, con la ocupación
    de perfiles de cada cuenta.
@@ -83,25 +84,30 @@ para reemplazar el control manual en planillas y evitar sobreventas y datos inco
 ```mermaid
 flowchart LR
     L[Inicio de sesión] -- usuario y contraseña válidos --> P[Ventana principal]
-    P --> S[Pestaña Suscripciones]
-    P --> C[Pestaña Clientes]
-    P --> K[Pestaña Cuentas y servicios]
-    P --> U[Pestaña Usuarios]
+    P --> S[Suscripciones]
+    P --> C[Clientes]
+    P --> K[Cuentas y servicios]
+    P --> U[Usuarios]
     S --> V[Diálogo Nueva venta]
     S --> R[Diálogo Renovar]
     S --> H[Ventana Historial de pagos]
     P -- Cerrar sesión --> L
 ```
 
+La interfaz usa la identidad visual de AccountStore PY: el logo, el amarillo de la marca
+(`#EDB026`), un inicio de sesión oscuro como la pantalla de PIN de la app y tarjetas blancas sobre
+fondo claro. La ventana abre maximizada y se adapta a pantallas chicas.
+
 1. **Inicio de sesión:** usuario y contraseña. Si son incorrectos muestra un mensaje y no deja pasar.
 
    ![Inicio de sesión](img/01_login.png)
 
-2. **Ventana principal:** arriba se ve el usuario y su rol, y el botón *Cerrar sesión*, que vuelve
-   al inicio de sesión. Los módulos están en pestañas, y cada vez que se abre una pestaña se vuelven
-   a leer sus datos de la base.
-3. **Suscripciones:** lista coloreada por estado, con buscador y filtro. Botones *Nueva venta*,
-   *Renovar*, *Dar de baja* e *Historial de pagos* (también con doble clic).
+2. **Ventana principal:** a la izquierda, un menú lateral con el logo, las secciones, el usuario con
+   su rol y el botón *Cerrar sesión*, que vuelve al inicio de sesión. Cada vez que se abre una sección
+   se vuelven a leer sus datos de la base.
+3. **Suscripciones:** tarjetas de resumen, filtros por estado con la cantidad de cada uno, buscador
+   y lista coloreada por estado. Botones *Nueva venta*, *Renovar*, *Historial de pagos* (también con
+   doble clic) y *Dar de baja*.
 
    ![Suscripciones](img/02_suscripciones.png)
 
@@ -209,7 +215,7 @@ El esquema completo está en [`datos/esquema.sql`](../datos/esquema.sql).
 
 **Secuencia completa desde Tkinter** (paso a paso en [GUION_DEMO.md](GUION_DEMO.md)):
 
-1. Inicio sesión → pestaña **Suscripciones** → **Nueva venta**.
+1. Inicio sesión → sección **Suscripciones** → **Nueva venta**.
 2. Elijo cliente, servicio y cuenta, y cargo perfiles, meses y fecha. El sistema calcula
    vencimiento (RN2) y monto (RN4).
 3. **Guardar venta:** la lógica valida los datos, controla la capacidad (RN1) y guarda la
@@ -347,7 +353,8 @@ accountstore_escritorio/
 ├── interfaz/               # CAPA DE INTERFAZ (Tkinter): solo muestra y llama a la lógica
 │   ├── app.py              #   navegación entre login y ventana principal
 │   ├── login.py, principal.py, suscripciones.py, clientes.py, cuentas.py, usuarios.py
-│   └── comun.py            #   estilos, tablas y manejo seguro de errores
+│   ├── comun.py            #   colores de la marca, estilos, tablas y manejo seguro de errores
+│   └── recursos/           #   logo e ícono de AccountStore PY
 ├── logica/                 # CAPA DE LÓGICA: reglas, validaciones, permisos y seguridad
 │   ├── gestor.py           #   operaciones del sistema (vender, renovar, dar de baja…)
 │   ├── reglas.py           #   reglas de negocio y validaciones (funciones puras)
@@ -425,7 +432,7 @@ código en capas y de este informe.
 
 **Cómo verifiqué el resultado:**
 
-1. Ejecuté las **31 pruebas automáticas** (`python -m unittest -v`) y todas pasaron. Las pruebas
+1. Ejecuté las **32 pruebas automáticas** (`python -m unittest -v`) y todas pasaron. Las pruebas
    comprueban las reglas de negocio (fin de mes, estados, capacidad), los permisos, las
    restricciones de la base y la persistencia.
 2. Comparé las reglas con mi sistema real: el estado por días (> 3 ACTIVO, 1 a 3 A VENCER,
@@ -447,9 +454,10 @@ código en capas y de este informe.
 | ✅ **Terminado** | Inicio y cierre de sesión con hash; roles y permisos. |
 | ✅ **Terminado** | Venta con control de capacidad, vencimiento y monto; transacción suscripción + pago. |
 | ✅ **Terminado** | Renovación sin pérdida de días; baja que libera perfiles; historial de pagos. |
-| ✅ **Terminado** | Lista de suscripciones con estados por color, buscador y filtro. |
+| ✅ **Terminado** | Lista de suscripciones con estados por color, buscador, filtros y tarjetas de resumen (incluye lo cobrado en el mes). |
+| ✅ **Terminado** | Interfaz con la identidad de AccountStore PY (logo, colores, menú lateral), adaptable a pantallas chicas. |
 | ✅ **Terminado** | Alta de clientes, servicios, cuentas y usuarios; ocupación de cuentas. |
-| ✅ **Terminado** | Restricciones de base (PK, FK, UNIQUE, CHECK) y 31 pruebas automáticas. |
+| ✅ **Terminado** | Restricciones de base (PK, FK, UNIQUE, CHECK) y 32 pruebas automáticas. |
 | 🟡 **Parcial** | Clientes: se cargan, buscan y eliminan, pero **no se editan**. |
 | 🟡 **Parcial** | Usuarios: se crean, pero **no se pueden desactivar ni cambiar su contraseña** desde la interfaz (la columna `activo` ya existe y el login la respeta). |
 | ⏳ **Pendiente** | Bloqueo temporal tras varios intentos fallidos de inicio de sesión. |

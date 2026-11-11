@@ -2,10 +2,19 @@
 
 Cada paso indica qué **indicador de la rúbrica** cubre. Conviene ensayarlo 2 o 3 veces.
 
-**Antes de empezar**
+**La noche anterior (en la notebook con la que vas a presentar)**
+- Copiar el proyecto y ejecutar `python main.py` una vez, para comprobar que abre. Ejecutar también
+  `python -m unittest -v`: tienen que pasar las 32 pruebas.
+- Llevar una copia de respaldo (pendrive y GitHub) por si falla la notebook.
+- Recorrer este guion completo al menos una vez, en voz alta y con el reloj.
+
+**Justo antes de presentar**
 - Borrar `accountstore.db` para empezar con los datos de ejemplo limpios (se crea sola al abrir).
-- Tener dos terminales abiertas en la carpeta `accountstore_escritorio`.
+- Tener dos terminales abiertas en la carpeta `accountstore_escritorio`, el informe abierto y
+  `datos/esquema.sql`, `logica/gestor.py` y `datos/repositorio.py` abiertos en el editor.
+- Cerrar otros programas y notificaciones (WhatsApp, correo) para que no aparezcan durante el demo.
 - Usuarios: `admin / Admin2026!` · `supervisor / Super2026!` · `cobranza / Cobra2026!`
+- Hacer **primero los datos inválidos y después el caso correcto**: así se ve que la lista no cambió.
 
 ---
 
@@ -21,7 +30,7 @@ Con el [INFORME](INFORME.md) abierto:
 ## Parte 2 — Sesión y seguridad (1,5 min) · indicadores 5.2 y 4.1
 
 4. `python main.py` → intentar `admin` con una clave equivocada → *"Usuario o contraseña incorrectos"*.
-5. Ingresar como `admin / Admin2026!`. Mostrar el nombre y el rol en la barra superior.
+5. Ingresar como `admin / Admin2026!`. Mostrar el nombre y el rol en el menú lateral.
 6. En la otra terminal: `python inspeccionar_bd.py usuarios` → se ve `clave_hash` y `clave_sal`, **no
    la contraseña**. Explicar PBKDF2 + sal + 600 000 iteraciones (`logica/seguridad.py`).
 
@@ -37,9 +46,11 @@ Con el [INFORME](INFORME.md) abierto:
    - Fecha **31/02/2026** → *"La fecha … no es válida"*.
    - Cerrar el diálogo y mostrar que la lista **no cambió**: no se guardó nada.
 10. Repetir la venta con datos correctos → **Guardar venta** → mensaje con vencimiento y monto (3.1).
-11. La venta aparece seleccionada en la lista, leída de la base (3.3). Doble clic → **Historial de
-    pagos** (pago VENTA registrado por el usuario). En **Cuentas**, netflix02 ahora tiene 3 libres.
-12. **Renovar** a *Diego Ramírez* (VENCIDO) por 1 mes → renueva **desde hoy** (RN5, 3.2).
+11. La venta aparece seleccionada en la lista, leída de la base (3.3). La tarjeta **Cobrado en el
+    mes** sube en Gs. 180.000. Doble clic → **Historial de pagos** (pago VENTA registrado por el
+    usuario). En **Cuentas y servicios**, netflix02 ahora tiene 3 libres.
+12. Filtro **Vencidas** → aparece *Diego Ramírez* → **Renovar** 1 mes → renueva **desde hoy**
+    (RN5, 3.2).
 
 ## Parte 4 — Base de datos (2 min) · indicadores 4.1 a 4.4
 
@@ -66,7 +77,7 @@ Con el [INFORME](INFORME.md) abierto:
 
 ## Parte 6 — IA, estado y planificación (1 min) · indicadores 6.3, 7.1 y 7.2
 
-21. Uso de IA y cómo lo verifiqué: `python -m unittest -v` → **31 pruebas OK** (§6).
+21. Uso de IA y cómo lo verifiqué: `python -m unittest -v` → **32 pruebas OK** (§6).
 22. Funcionalidades terminadas, parciales y pendientes, y plan con fechas (§7).
 
 ---
@@ -85,7 +96,7 @@ estas antes, a mano, y comprobar cada una ejecutando el programa y `python -m un
 | Contraseña de al menos 10 caracteres | `logica/reglas.py` → `validar_clave_nueva`: `if len(clave) < 10` |
 | Mostrar el monto total en el historial | ya existe en `interfaz/suscripciones.py` → `VentanaHistorial` (`sum(...)`) |
 | Agregar una columna a la lista | `interfaz/suscripciones.py` → `COLUMNAS` y la tupla de valores en `actualizar()` |
-| Nuevo servicio con otra capacidad | desde la pestaña **Cuentas y servicios**, o en `logica/datos_ejemplo.py` |
+| Nuevo servicio con otra capacidad | desde la sección **Cuentas y servicios**, o en `logica/datos_ejemplo.py` |
 | Precio = precio × perfiles × meses con 10 % de descuento desde 6 meses | `logica/reglas.py` → `calcular_monto` |
 
 **Preguntas probables:**

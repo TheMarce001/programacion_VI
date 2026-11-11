@@ -106,6 +106,16 @@ class PruebasGestor(unittest.TestCase):
             self.gestor.registrar_venta(9999, cuenta, "1", "1", "12/11/2026", hoy=HOY)  # FK
         self.assertEqual(self._contar("suscripciones"), antes)
 
+    def test_resumen_cuenta_estados_y_cobrado_del_mes(self):
+        self.gestor.iniciar_sesion("admin", "Admin2026!")
+        resumen = self.gestor.resumen(hoy=HOY)
+        self.assertEqual(resumen["cantidades"], {"ACTIVO": 2, "A VENCER": 2, "VENCIDO": 1, "BAJA": 1})
+        cobrado_antes = resumen["cobrado_mes"]
+        cuenta = self._cuenta("netflix02@example.com")["id"]
+        cliente = self._cliente("Jorge Villalba")["id"]
+        self.gestor.registrar_venta(cliente, cuenta, "1", "1", "12/11/2026", hoy=HOY)
+        self.assertEqual(self.gestor.resumen(hoy=HOY)["cobrado_mes"], cobrado_antes + 30000)
+
     def test_renovar_vencida_cuenta_desde_hoy(self):
         self.gestor.iniciar_sesion("cobranza", "Cobra2026!")
         diego = self.gestor.listar_suscripciones("Diego", hoy=HOY)[0]

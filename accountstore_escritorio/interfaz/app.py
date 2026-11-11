@@ -5,7 +5,7 @@ import logging
 import tkinter as tk
 from tkinter import messagebox
 
-from interfaz.comun import configurar_estilos
+from interfaz.comun import cargar_imagen, configurar_estilos
 from interfaz.login import PantallaLogin
 from interfaz.principal import PantallaPrincipal
 
@@ -15,8 +15,15 @@ class Aplicacion(tk.Tk):
         super().__init__()
         self.gestor = gestor
         self.title("AccountStore Escritorio")
-        self.geometry("1120x660")
-        self.minsize(960, 600)
+        self.geometry("1240x720")
+        self.minsize(980, 560)
+        try:
+            self.state("zoomed")                  # en Windows abre maximizada
+        except tk.TclError:
+            pass                                  # en Linux no existe "zoomed"
+        self.icono = cargar_imagen("icono.png")
+        if self.icono:
+            self.iconphoto(True, self.icono)     # ícono de la ventana y de la barra de tareas
         configurar_estilos(self)
         # Cualquier error no previsto en un botón se muestra en un mensaje
         # en vez de perderse en la consola.

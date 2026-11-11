@@ -148,6 +148,16 @@ class Gestor:
                 resultado.append(s)
         return resultado
 
+    def resumen(self, hoy=None):
+        """Datos de las tarjetas de resumen: cantidad de suscripciones en cada
+        situación y lo cobrado desde el día 1 del mes actual hasta hoy."""
+        hoy = hoy or date.today()
+        cantidades = {"ACTIVO": 0, "A VENCER": 0, "VENCIDO": 0, "BAJA": 0}
+        for s in self.listar_suscripciones(hoy=hoy):
+            cantidades[s["situacion"]] += 1
+        cobrado = self.repo.total_cobrado(hoy.replace(day=1).isoformat(), hoy.isoformat())
+        return {"cantidades": cantidades, "total": sum(cantidades.values()), "cobrado_mes": cobrado}
+
     def obtener_suscripcion(self, suscripcion_id):
         self._exigir_sesion()
         if suscripcion_id is None:
