@@ -1,0 +1,5 @@
+# La base se crea sola al ejecutar main.py (con datos de ejemplo)
+accountstore.db
+errores.log
+__pycache__/
+*.pyc
