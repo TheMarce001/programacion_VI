@@ -4,7 +4,7 @@ Cada paso indica qué **indicador de la rúbrica** cubre. Conviene ensayarlo 2 o
 
 **La noche anterior (en la notebook con la que vas a presentar)**
 - Copiar el proyecto y ejecutar `python main.py` una vez, para comprobar que abre. Ejecutar también
-  `python -m unittest -v`: tienen que pasar las 55 pruebas.
+  `python -m unittest -v`: tienen que pasar las 66 pruebas.
 - Llevar una copia de respaldo (pendrive y GitHub) por si falla la notebook.
 - Recorrer este guion completo al menos una vez, en voz alta y con el reloj.
 
@@ -32,7 +32,11 @@ Con el [INFORME](INFORME.md) abierto:
 4. `python main.py` → intentar `admin` con una clave equivocada → aparece en rojo *"Usuario o contraseña
    incorrectos"* y no deja pasar. Mostrar el ojo para ver la contraseña y mencionar que *"¿Olvidó su
    contraseña?"* abre WhatsApp con el administrador.
-5. Ingresar como `admin / Admin2026!`. Mostrar el nombre y el rol en el menú lateral.
+5. **Bloqueo:** con el usuario `supervisor` (¡no con `admin`!), escribir 3 veces una contraseña
+   equivocada → *"el usuario quedó bloqueado 5 minutos"*. Aunque ahora se escriba la correcta,
+   no deja entrar (RN10).
+   Ingresar como `admin / Admin2026!`. Mostrar el nombre y el rol en el menú lateral. En **Usuarios**,
+   `supervisor` aparece *Bloqueado* → **Desbloquear usuario seleccionado**.
 6. En la otra terminal: `python inspeccionar_bd.py usuarios` → se ve `clave_hash` y `clave_sal`, **no
    la contraseña**. Explicar PBKDF2 + sal + 600 000 iteraciones (`logica/seguridad.py`).
 
@@ -61,7 +65,9 @@ Con el [INFORME](INFORME.md) abierto:
 
 13. Abrir `datos/esquema.sql`: PK `id` en cada tabla y FK con `REFERENCES … ON DELETE RESTRICT`.
     Mencionar `PRAGMA foreign_keys = ON` en `datos/conexion.py` (4.1).
-14. **Clientes → eliminar a Ana Gómez** → rechazado porque tiene suscripciones (FK).
+14. **Clientes → doble clic en Ana Gómez** → el formulario pasa a *Editar cliente*; cambiar el nombre
+    a `123` → rechazado; ponerle `Ana María Gómez` → *Guardar cambios*.
+    **Eliminar a Ana María Gómez** → rechazado porque tiene suscripciones (FK).
     **Nuevo cliente** de Paraguay con el teléfono `0981 111 222` → rechazado porque ya existe (UNIQUE) (4.2).
     Después, un cliente de **Uruguay** con `099 555 777` → se guarda como `+59899555777` (RN8).
     En **Cuentas y servicios**, seleccionar **Netflix → Eliminar** → rechazado porque tiene cuentas (FK).
@@ -84,7 +90,7 @@ Con el [INFORME](INFORME.md) abierto:
 
 ## Parte 6 — IA, estado y planificación (1 min) · indicadores 6.3, 7.1 y 7.2
 
-21. Uso de IA y cómo lo verifiqué: `python -m unittest -v` → **55 pruebas OK** (§6).
+21. Uso de IA y cómo lo verifiqué: `python -m unittest -v` → **66 pruebas OK** (§6).
 22. Funcionalidades terminadas, parciales y pendientes, y plan con fechas (§7).
 
 ---
@@ -100,6 +106,7 @@ estas antes, a mano, y comprobar cada una ejecutando el programa y `python -m un
 | Ventas de hasta 6 meses | `logica/reglas.py` → `MESES_MAXIMOS = 6` |
 | Que "Pagos y vencimientos" sí pueda dar de baja | `logica/permisos.py` → agregar `"dar_de_baja"` al conjunto de `COBRANZA` |
 | Cambiar un mensaje de error | `logica/reglas.py` o `logica/gestor.py`, en el texto del `ErrorValidacion` |
+| Bloquear con 5 intentos o por 10 minutos | `logica/reglas.py` → `MAX_INTENTOS` y `MINUTOS_BLOQUEO` |
 | Cambiar el WhatsApp del administrador o el mensaje | `interfaz/login.py` → `WHATSAPP_ADMIN` y `pedir_contrasena` |
 | Contraseña de al menos 10 caracteres | `logica/reglas.py` → `validar_clave_nueva`: `if len(clave) < 10` |
 | Mostrar el monto total en el historial | ya existe en `interfaz/suscripciones.py` → `VentanaHistorial` (`sum(...)`) |

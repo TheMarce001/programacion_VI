@@ -12,7 +12,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
     rol         TEXT    NOT NULL CHECK (rol IN ('ADMIN', 'SUPERVISOR', 'COBRANZA')),
     clave_hash  TEXT    NOT NULL,          -- hash PBKDF2 de la contraseña (nunca la contraseña)
     clave_sal   TEXT    NOT NULL,          -- sal aleatoria, distinta para cada usuario
-    activo      INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1))
+    activo      INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
+    intentos_fallidos  INTEGER NOT NULL DEFAULT 0 CHECK (intentos_fallidos >= 0),
+    bloqueado_hasta    TEXT              -- fecha y hora hasta la que no puede entrar (o NULL)
 );
 
 -- Plataformas que se venden (Netflix, Disney+, ...).
@@ -66,4 +68,4 @@ CREATE TABLE IF NOT EXISTS pagos (
 );
 
 -- Versión de esta estructura. Si la base es de una versión anterior, el programa avisa.
-PRAGMA user_version = 2;
+PRAGMA user_version = 3;

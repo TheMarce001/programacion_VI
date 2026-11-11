@@ -16,10 +16,10 @@ ACCIONES = {
     "registrar_venta": "registrar ventas",
     "renovar": "renovar suscripciones",
     "dar_de_baja": "dar de baja suscripciones",
-    "gestionar_clientes": "registrar clientes",
+    "gestionar_clientes": "registrar o editar clientes",
     "eliminar_cliente": "eliminar clientes",
     "gestionar_cuentas": "agregar o eliminar servicios y cuentas",
-    "gestionar_usuarios": "crear usuarios",
+    "gestionar_usuarios": "crear o desbloquear usuarios",
 }
 
 PERMISOS = {

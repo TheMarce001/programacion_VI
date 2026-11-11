@@ -61,6 +61,7 @@ class PantallaLogin(tk.Frame):
         self.clave = self.campo_clave.entrada
 
         self.error = texto("", ROJO_ERROR)            # aquí aparece "Usuario o contraseña incorrectos"
+        self.error.configure(wraplength=340, justify="center")
         self.error.pack(pady=(10, 0))
 
         ayuda = tk.Frame(self.tarjeta, bg=OSCURO)

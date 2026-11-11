@@ -18,6 +18,8 @@ FORMATO_FECHA = "%d/%m/%Y"
 PATRON_CORREO = re.compile(r"[a-z0-9._%+-]+@[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}")
 LARGO_MAXIMO = {"nombre": 60, "correo": 100, "servicio": 30, "clave": 64}
 DIAS_ATRAS_MAXIMO = 366       # una venta puede registrarse con fecha de inicio de hasta un año atrás
+MAX_INTENTOS = 3              # intentos fallidos seguidos antes de bloquear al usuario
+MINUTOS_BLOQUEO = 5           # minutos que dura el bloqueo
 
 
 # ------------------------------------------------------------------ fechas
@@ -200,6 +202,17 @@ def normalizar_telefono(texto, pais=PAIS_POR_DEFECTO):
     if pais == "Paraguay" and not digitos.startswith("9"):
         raise ErrorValidacion("El celular de Paraguay debe empezar con 09, por ejemplo 0981 123 456.")
     return "+" + codigo + digitos
+
+
+def separar_telefono(telefono):
+    """'+595981123456' -> ('Paraguay', '981123456'). Sirve para mostrar el teléfono
+    guardado en el formulario de edición, con su país elegido."""
+    digitos = re.sub(r"\D", "", telefono or "")
+    # Se prueba primero el código más largo: +591 (Bolivia) antes que +59..., +1 al final
+    for pais, (codigo, _minimo, _maximo) in sorted(PAISES.items(), key=lambda p: -len(p[1][0])):
+        if digitos.startswith(codigo):
+            return pais, digitos[len(codigo):]
+    return PAIS_POR_DEFECTO, digitos
 
 
 def validar_correo(texto, obligatorio=False):

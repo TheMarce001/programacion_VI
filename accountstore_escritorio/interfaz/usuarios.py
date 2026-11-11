@@ -1,11 +1,11 @@
-"""Sección Usuarios: lista de usuarios y alta de usuarios (solo Administrador)."""
+"""Sección Usuarios: lista, alta y desbloqueo de usuarios (solo Administrador)."""
 from tkinter import messagebox, ttk
 
-from interfaz.comun import campo, crear_tabla, ejecutar_seguro, llenar_tabla, tarjeta
+from interfaz.comun import campo, crear_tabla, ejecutar_seguro, id_seleccionado, llenar_tabla, tarjeta
 from logica.permisos import ROLES
 
-COLUMNAS = [("usuario", "Usuario", 130), ("nombre", "Nombre", 220), ("rol", "Rol", 190),
-            ("estado", "Estado", 90)]
+COLUMNAS = [("usuario", "Usuario", 100), ("nombre", "Nombre", 165), ("rol", "Rol", 150),
+            ("estado", "Estado", 185)]
 
 
 class PestanaUsuarios(ttk.Frame):
@@ -28,18 +28,34 @@ class PestanaUsuarios(ttk.Frame):
         ttk.Button(formulario, text="Crear usuario", style="Accion.TButton",
                    command=self.guardar).pack(fill="x", pady=(2, 10))
         ttk.Label(formulario, style="TarjetaNota.TLabel", wraplength=270, justify="left",
-                  text="Mínimo 8 caracteres, con letras y números. Se guarda como hash "
-                       "PBKDF2 con sal, nunca en texto plano.").pack(anchor="w")
+                  text="Mín. 8 caracteres con letras y números; se guarda como hash con sal. "
+                       "3 intentos fallidos seguidos: bloqueo de 5 minutos.").pack(anchor="w")
 
-        marco, self.tabla = crear_tabla(self, COLUMNAS, alto=12)
-        marco.pack(side="left", fill="both", expand=True)
+        lista = ttk.Frame(self)
+        lista.pack(side="left", fill="both", expand=True)
+        abajo = ttk.Frame(lista)
+        abajo.pack(side="bottom", fill="x", pady=(12, 0))
+        ttk.Button(abajo, text="Desbloquear usuario seleccionado",
+                   command=self.desbloquear).pack(side="right")
+        marco, self.tabla = crear_tabla(lista, COLUMNAS, alto=12)
+        marco.pack(fill="both", expand=True)
 
     def actualizar(self, _evento=None):
         ok, usuarios = ejecutar_seguro(self, self.gestor.listar_usuarios)
         if ok:
             llenar_tabla(self.tabla, [
-                (u["id"], (u["usuario"], u["nombre"], u["rol_texto"],
-                           "Activo" if u["activo"] else "Inactivo"), None) for u in usuarios])
+                (u["id"], (u["usuario"], u["nombre"], u["rol_texto"], u["estado_texto"]),
+                 "VENCIDO" if u["estado_texto"].startswith("Bloqueado") else None) for u in usuarios])
+
+    def desbloquear(self):
+        usuario_id = id_seleccionado(self.tabla)
+        if usuario_id is None:
+            messagebox.showinfo("Usuarios", "Primero seleccione un usuario de la lista.", parent=self)
+            return
+        ok, _ = ejecutar_seguro(self, self.gestor.desbloquear_usuario, usuario_id)
+        if ok:
+            messagebox.showinfo("Usuarios", "El usuario ya puede volver a entrar.", parent=self)
+            self.actualizar()
 
     def guardar(self):
         codigo_rol = {texto: codigo for codigo, texto in ROLES.items()}.get(self.rol.get())

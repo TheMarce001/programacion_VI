@@ -19,14 +19,22 @@ class Repositorio:
         return self.conexion.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0]
 
     def buscar_usuario(self, usuario):
-        sql = """SELECT id, usuario, nombre, rol, clave_hash, clave_sal, activo
+        sql = """SELECT id, usuario, nombre, rol, clave_hash, clave_sal, activo,
+                        intentos_fallidos, bloqueado_hasta
                  FROM usuarios
                  WHERE usuario = ?"""
         return self.conexion.execute(sql, (usuario,)).fetchone()
 
     def listar_usuarios(self):
-        sql = "SELECT id, usuario, nombre, rol, activo FROM usuarios ORDER BY usuario"
+        sql = """SELECT id, usuario, nombre, rol, activo, bloqueado_hasta
+                 FROM usuarios ORDER BY usuario"""
         return self.conexion.execute(sql).fetchall()
+
+    def guardar_intentos(self, usuario_id, intentos, bloqueado_hasta):
+        """Guarda los intentos fallidos seguidos y, si corresponde, hasta cuándo está bloqueado."""
+        sql = "UPDATE usuarios SET intentos_fallidos = ?, bloqueado_hasta = ? WHERE id = ?"
+        with self.conexion:
+            self.conexion.execute(sql, (intentos, bloqueado_hasta, usuario_id))
 
     def insertar_usuario(self, usuario, nombre, rol, clave_hash, clave_sal):
         sql = """INSERT INTO usuarios (usuario, nombre, rol, clave_hash, clave_sal)
@@ -100,6 +108,16 @@ class Repositorio:
         with self.conexion:
             cursor = self.conexion.execute(sql, (nombre, telefono, correo))
         return cursor.lastrowid
+
+    def obtener_cliente(self, cliente_id):
+        sql = "SELECT id, nombre, telefono, correo FROM clientes WHERE id = ?"
+        return self.conexion.execute(sql, (cliente_id,)).fetchone()
+
+    def actualizar_cliente(self, cliente_id, nombre, telefono, correo):
+        sql = "UPDATE clientes SET nombre = ?, telefono = ?, correo = ? WHERE id = ?"
+        with self.conexion:
+            cursor = self.conexion.execute(sql, (nombre, telefono, correo, cliente_id))
+        return cursor.rowcount            # 0 si el cliente no existe
 
     def eliminar_cliente(self, cliente_id):
         with self.conexion:

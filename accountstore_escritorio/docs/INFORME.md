@@ -61,11 +61,11 @@ para reemplazar el control manual en planillas y evitar sobreventas y datos inco
    cobrado en el mes), nueva venta con buscador de clientes y descuento opcional (en Gs. o en %),
    renovación, baja, búsqueda, filtro por estado (ACTIVO / A VENCER / VENCIDO / BAJA) e historial
    de pagos.
-3. **Clientes:** alta, búsqueda y eliminación (solo si no tiene suscripciones).
+3. **Clientes:** alta, edición, búsqueda y eliminación (solo si no tiene suscripciones).
 4. **Cuentas y servicios:** alta y eliminación de servicios (capacidad y precio) y de cuentas, con
    la ocupación de perfiles de cada cuenta. Solo se elimina lo que no está en uso: un servicio sin
    cuentas o una cuenta sin suscripciones.
-5. **Usuarios:** lista y alta de usuarios (solo el Administrador).
+5. **Usuarios:** lista, alta y desbloqueo de usuarios (solo el Administrador).
 
 **Funcionalidades excluidas** (no se hacen en esta versión)
 
@@ -75,8 +75,8 @@ para reemplazar el control manual en planillas y evitar sobreventas y datos inco
 - Migración automática de los datos de la planilla de Google Sheets.
 - Versión móvil / web y sincronización en la nube (es una app de escritorio con base local).
 - Facturación legal, reportes y gráficos.
-- Edición de clientes, recuperación automática de contraseña (por ahora se le pide al administrador
-  por WhatsApp desde el inicio de sesión) y bloqueo por intentos fallidos (ver §7).
+- Recuperación automática de contraseña (por ahora se le pide al administrador por WhatsApp desde
+  el inicio de sesión), cambio de contraseña y desactivación de usuarios (ver §7).
 
 ---
 
@@ -105,9 +105,12 @@ fondo claro. La ventana abre maximizada y se adapta a pantallas chicas.
    de PIN de la app. Pide usuario y contraseña, con un ojo para ver u ocultar la contraseña. Si los
    datos son incorrectos, muestra el error en rojo dentro de la tarjeta y no deja pasar. El enlace
    *"¿Olvidó su contraseña? Pídasela al administrador"* abre WhatsApp con el administrador y deja el
-   mensaje ya escrito, igual que *"Pedíselo al administrador"* en la app.
+   mensaje ya escrito, igual que *"Pedíselo al administrador"* en la app. Tras 3 contraseñas
+   incorrectas seguidas, el usuario queda bloqueado 5 minutos (RN10).
 
    ![Inicio de sesión](img/01_login.png)
+
+   ![Usuario bloqueado](img/16_usuario_bloqueado.png)
 
 2. **Ventana principal:** a la izquierda, un menú lateral con el logo, las secciones, el usuario con
    su rol y el botón *Cerrar sesión*, que vuelve al inicio de sesión. Cada vez que se abre una sección
@@ -128,16 +131,21 @@ fondo claro. La ventana abre maximizada y se adapta a pantallas chicas.
 
    ![Venta con descuento](img/14_venta_con_descuento.png)
 
-5. **Clientes:** formulario de alta a la izquierda y lista con buscador a la derecha.
+5. **Clientes:** formulario de alta a la izquierda y lista con buscador a la derecha. Con *Editar
+   cliente seleccionado* (o doble clic en la fila), los datos del cliente pasan al formulario, que
+   cambia a *Editar cliente*; se corrigen y se guardan con las mismas validaciones que al crearlo.
 
    ![Clientes](img/08_clientes.png)
+
+   ![Editar cliente](img/15_editar_cliente.png)
 
 6. **Cuentas y servicios:** servicios con capacidad y precio; cuentas con perfiles ocupados y libres
    (en rojo las cuentas llenas).
 
    ![Cuentas y servicios](img/10_cuentas.png)
 
-7. **Usuarios:** lista de usuarios y formulario de alta (solo Administrador).
+7. **Usuarios:** lista de usuarios con su estado (Activo o Bloqueado), formulario de alta y botón
+   *Desbloquear usuario seleccionado* (solo Administrador).
 
    ![Usuarios](img/11_usuarios.png)
 
@@ -159,6 +167,8 @@ erDiagram
         text clave_hash
         text clave_sal
         int activo
+        int intentos_fallidos
+        text bloqueado_hasta
     }
     SERVICIOS {
         int id PK
@@ -222,6 +232,7 @@ El esquema completo está en [`datos/esquema.sql`](../datos/esquema.sql).
 | RN7 | **Permisos por rol:** "Pagos y vencimientos" no puede dar de baja, eliminar clientes, tocar cuentas ni crear usuarios. | `logica/permisos.py` |
 | RN8 | **Un teléfono = un cliente, con código de país:** se elige el país (Paraguay por defecto, igual que en la app de ventas) y el número se guarda en formato internacional: `0981 123 456` → `+595981123456`; un número de Uruguay `099 555 777` → `+59899555777`. Así sirve para WhatsApp, se aceptan clientes extranjeros y el mismo número no puede repetirse aunque se escriba distinto. | `reglas.normalizar_telefono` + `UNIQUE` |
 | RN9 | **Descuento:** en una venta o renovación se puede descontar un monto en Gs. o un porcentaje, como en la app de ventas. No puede ser negativo, el porcentaje no pasa de 100 % y el total a cobrar tiene que quedar mayor a cero. Se guarda en el pago cuánto se descontó. | `reglas.calcular_descuento` |
+| RN10 | **Bloqueo por intentos fallidos:** 3 contraseñas incorrectas seguidas bloquean al usuario 5 minutos (aunque luego escriba la correcta). Se guarda en la base; entrar bien reinicia el contador; el Administrador puede desbloquear. | `gestor.iniciar_sesion` |
 
 ---
 
@@ -419,6 +430,10 @@ y la capa de datos no conoce Tkinter.
   `hmac.compare_digest`.
 - Si el usuario no existe o la clave es incorrecta, el mensaje es el mismo: *"Usuario o contraseña
   incorrectos"* (no revela qué usuarios existen).
+- **Bloqueo por intentos fallidos:** tras 3 contraseñas incorrectas seguidas, el usuario queda
+  bloqueado 5 minutos, aunque después escriba la contraseña correcta. Los intentos y la hora de fin
+  del bloqueo se guardan en la tabla `usuarios`, así que cerrar y abrir el programa no lo evita. Al
+  entrar bien, el contador vuelve a cero. El Administrador puede desbloquearlo antes desde *Usuarios*.
 - *Cerrar sesión* borra el usuario actual (`gestor.usuario = None`) y vuelve al login. Sin sesión,
   la lógica rechaza cualquier operación.
 - `python inspeccionar_bd.py usuarios` muestra que en la base solo están el hash y la sal:
@@ -433,11 +448,11 @@ id | usuario | nombre | rol | clave_hash | clave_sal | activo
 | Acción | Administrador | Supervisor | Pagos y vencimientos |
 |---|:-:|:-:|:-:|
 | Registrar venta / renovar | ✔ | ✔ | ✔ |
-| Registrar clientes | ✔ | ✔ | ✔ |
+| Registrar y editar clientes | ✔ | ✔ | ✔ |
 | Dar de baja | ✔ | ✔ | ✘ |
 | Eliminar clientes | ✔ | ✔ | ✘ |
 | Agregar servicios y cuentas | ✔ | ✔ | ✘ |
-| Crear usuarios | ✔ | ✘ | ✘ |
+| Crear y desbloquear usuarios | ✔ | ✘ | ✘ |
 
 El control está en la **lógica** (`exigir_permiso` al comienzo de cada operación de `gestor.py`), no
 en la interfaz: el botón *Dar de baja* está a la vista para todos, pero la lógica rechaza la acción.
@@ -477,7 +492,7 @@ código en capas y de este informe.
 
 **Cómo verifiqué el resultado:**
 
-1. Ejecuté las **55 pruebas automáticas** (`python -m unittest -v`) y todas pasaron. Las pruebas
+1. Ejecuté las **66 pruebas automáticas** (`python -m unittest -v`) y todas pasaron. Las pruebas
    comprueban las reglas de negocio (fin de mes, estados, capacidad), los permisos, las
    restricciones de la base y la persistencia.
 2. Comparé las reglas con mi sistema real: el estado por días (> 3 ACTIVO, 1 a 3 A VENCER,
@@ -504,10 +519,9 @@ código en capas y de este informe.
 | ✅ **Terminado** | Alta de clientes, servicios, cuentas y usuarios; ocupación de cuentas; eliminación de servicios y cuentas que no están en uso. |
 | ✅ **Terminado** | Clientes de otros países: selector de país y teléfono guardado con código internacional. |
 | ✅ **Terminado** | Descuento en ventas y renovaciones (en Gs. o en %) y buscador de clientes sin tildes en la venta. |
-| ✅ **Terminado** | Restricciones de base (PK, FK, UNIQUE, CHECK) y 55 pruebas automáticas. |
-| 🟡 **Parcial** | Clientes: se cargan, buscan y eliminan, pero **no se editan**. |
+| ✅ **Terminado** | Edición de clientes y bloqueo de 5 minutos tras 3 contraseñas incorrectas, con desbloqueo por el Administrador. |
+| ✅ **Terminado** | Restricciones de base (PK, FK, UNIQUE, CHECK) y 66 pruebas automáticas. |
 | 🟡 **Parcial** | Usuarios: se crean, pero **no se pueden desactivar ni cambiar su contraseña** desde la interfaz (la columna `activo` ya existe y el login la respeta). |
-| ⏳ **Pendiente** | Bloqueo temporal tras varios intentos fallidos de inicio de sesión. |
 | ⏳ **Pendiente** | Importar clientes y suscripciones desde la planilla actual (CSV). |
 | ⏳ **Pendiente** | Recordatorio de vencimiento por WhatsApp (enlace `wa.me` con mensaje). |
 | ⏳ **Pendiente** | Reporte de cobros por mes y por usuario. |
@@ -516,11 +530,10 @@ código en capas y de este informe.
 
 | Prioridad | Tarea | Plazo |
 |:-:|---|---|
-| 1 | Editar clientes, desactivar usuarios y cambiar contraseña | 13/11 – 19/11/2026 |
-| 2 | Bloqueo tras 3 intentos fallidos (5 minutos) | 20/11 – 23/11/2026 |
-| 3 | Importación desde CSV de la planilla actual | 24/11 – 03/12/2026 |
-| 4 | Reporte de cobros por mes y por usuario | 04/12 – 10/12/2026 |
-| 5 | Recordatorio de vencimiento por WhatsApp | 11/12 – 17/12/2026 |
+| 1 | Cambiar contraseña y desactivar usuarios desde *Usuarios* | 13/11 – 19/11/2026 |
+| 2 | Importación desde CSV de la planilla actual | 20/11 – 30/11/2026 |
+| 3 | Reporte de cobros por mes y por usuario | 01/12 – 07/12/2026 |
+| 4 | Recordatorio de vencimiento por WhatsApp | 08/12 – 14/12/2026 |
 
 Las prioridades siguen este criterio: primero lo que completa los módulos ya existentes, después la
 seguridad y por último lo que ahorra trabajo manual en el negocio.

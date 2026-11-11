@@ -7,8 +7,9 @@ La interfaz (Tkinter) solo llama a métodos de esta clase. Cada operación:
 Si algo falla, lanza ErrorValidacion o PermisoDenegado con un mensaje claro
 y NO se guarda nada.
 """
+import math
 import sqlite3
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from logica import reglas, seguridad
 from logica.errores import ErrorValidacion, PermisoDenegado
@@ -40,18 +41,47 @@ class Gestor:
         self.usuario = None          # usuario con la sesión iniciada, o None
 
     # =============================================================== sesión
-    def iniciar_sesion(self, usuario, clave):
+    def iniciar_sesion(self, usuario, clave, ahora=None):
+        """REGLA DE SEGURIDAD: tras 3 intentos fallidos seguidos, el usuario queda
+        bloqueado 5 minutos. El bloqueo se guarda en la base: cerrar el programa no lo evita."""
+        ahora = ahora or datetime.now()
         usuario = (usuario or "").strip().lower()
         if not usuario or not clave:
             raise ErrorValidacion("Ingrese su usuario y su contraseña.")
         fila = self.repo.buscar_usuario(usuario)
+
+        # 1) ¿Está bloqueado? (se controla ANTES de mirar la contraseña)
+        if fila is not None and fila["bloqueado_hasta"]:
+            hasta = datetime.fromisoformat(fila["bloqueado_hasta"])
+            if ahora < hasta:
+                minutos = math.ceil((hasta - ahora).total_seconds() / 60)
+                raise ErrorValidacion(
+                    f"Usuario bloqueado por {reglas.MAX_INTENTOS} intentos fallidos. Intente de nuevo "
+                    f"en {minutos} minuto(s) o pida al administrador que lo desbloquee.")
+
+        # 2) ¿Usuario y contraseña correctos?
         if (fila is None or not fila["activo"]
                 or not seguridad.verificar_clave(clave, fila["clave_hash"], fila["clave_sal"])):
+            if fila is not None:
+                self._sumar_intento_fallido(fila, ahora)
             # El mismo mensaje para todos los casos: no revela si el usuario existe.
             raise ErrorValidacion("Usuario o contraseña incorrectos.")
+
+        # 3) Entró bien: se reinicia el contador de intentos
+        self.repo.guardar_intentos(fila["id"], 0, None)
         self.usuario = {"id": fila["id"], "usuario": fila["usuario"],
                         "nombre": fila["nombre"], "rol": fila["rol"]}
         return self.usuario
+
+    def _sumar_intento_fallido(self, fila, ahora):
+        intentos = fila["intentos_fallidos"] + 1
+        if intentos >= reglas.MAX_INTENTOS:
+            hasta = ahora + timedelta(minutes=reglas.MINUTOS_BLOQUEO)
+            self.repo.guardar_intentos(fila["id"], 0, hasta.isoformat(timespec="seconds"))
+            raise ErrorValidacion(
+                f"Contraseña incorrecta por {reglas.MAX_INTENTOS}.ª vez: el usuario quedó bloqueado "
+                f"{reglas.MINUTOS_BLOQUEO} minutos.")
+        self.repo.guardar_intentos(fila["id"], intentos, None)
 
     def cerrar_sesion(self):
         self.usuario = None
@@ -81,6 +111,30 @@ class Gestor:
         except sqlite3.IntegrityError as error:
             # La restricción UNIQUE de clientes.telefono impide clientes repetidos.
             raise _error_de_base(error, f"Ya existe un cliente con el teléfono {telefono}.") from error
+
+    def obtener_cliente(self, cliente_id):
+        self._exigir_sesion()
+        fila = self.repo.obtener_cliente(cliente_id) if cliente_id is not None else None
+        if fila is None:
+            raise ErrorValidacion("Seleccione un cliente de la lista.")
+        cliente = dict(fila)
+        cliente["pais"], cliente["numero"] = reglas.separar_telefono(cliente["telefono"])
+        return cliente
+
+    def actualizar_cliente(self, cliente_id, nombre, telefono, correo, pais=reglas.PAIS_POR_DEFECTO):
+        """Editar un cliente: mismas validaciones que al crearlo."""
+        exigir_permiso(self.usuario, "gestionar_clientes")
+        if cliente_id is None:
+            raise ErrorValidacion("Seleccione un cliente de la lista.")
+        nombre = reglas.validar_nombre(nombre, "El nombre del cliente")
+        telefono = reglas.normalizar_telefono(telefono, pais)
+        correo = reglas.validar_correo(correo)
+        try:
+            cambiados = self.repo.actualizar_cliente(cliente_id, nombre, telefono, correo)
+        except sqlite3.IntegrityError as error:
+            raise _error_de_base(error, f"Ya existe otro cliente con el teléfono {telefono}.") from error
+        if cambiados == 0:
+            raise ErrorValidacion("El cliente ya no existe.")
 
     def eliminar_cliente(self, cliente_id):
         exigir_permiso(self.usuario, "eliminar_cliente")
@@ -291,14 +345,26 @@ class Gestor:
         return pagos
 
     # ============================================================= usuarios
-    def listar_usuarios(self):
+    def listar_usuarios(self, ahora=None):
         self._exigir_sesion()
+        ahora = ahora or datetime.now()
         usuarios = []
         for fila in self.repo.listar_usuarios():
             usuario = dict(fila)
             usuario["rol_texto"] = ROLES.get(usuario["rol"], usuario["rol"])
+            hasta = usuario["bloqueado_hasta"]
+            if hasta and ahora < datetime.fromisoformat(hasta):
+                usuario["estado_texto"] = f"Bloqueado ({datetime.fromisoformat(hasta).strftime('%H:%M')})"
+            else:
+                usuario["estado_texto"] = "Activo" if usuario["activo"] else "Inactivo"
             usuarios.append(usuario)
         return usuarios
+
+    def desbloquear_usuario(self, usuario_id):
+        exigir_permiso(self.usuario, "gestionar_usuarios")
+        if usuario_id is None:
+            raise ErrorValidacion("Seleccione un usuario de la lista.")
+        self.repo.guardar_intentos(usuario_id, 0, None)
 
     def registrar_usuario(self, usuario, nombre, rol, clave, confirmacion):
         exigir_permiso(self.usuario, "gestionar_usuarios")

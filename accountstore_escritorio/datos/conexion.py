@@ -11,7 +11,7 @@ from pathlib import Path
 CARPETA_DATOS = Path(__file__).resolve().parent
 RUTA_BD = CARPETA_DATOS.parent / "accountstore.db"
 RUTA_ESQUEMA = CARPETA_DATOS / "esquema.sql"
-VERSION_ESQUEMA = 2          # debe coincidir con "PRAGMA user_version" al final de esquema.sql
+VERSION_ESQUEMA = 3          # debe coincidir con "PRAGMA user_version" al final de esquema.sql
 
 
 class BaseIncompatible(Exception):
