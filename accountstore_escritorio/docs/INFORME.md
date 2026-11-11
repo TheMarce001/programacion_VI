@@ -74,7 +74,8 @@ para reemplazar el control manual en planillas y evitar sobreventas y datos inco
 - Migración automática de los datos de la planilla de Google Sheets.
 - Versión móvil / web y sincronización en la nube (es una app de escritorio con base local).
 - Facturación legal, reportes y gráficos.
-- Edición de clientes, recuperación de contraseña y bloqueo por intentos fallidos (ver §7).
+- Edición de clientes, recuperación automática de contraseña (por ahora se le pide al administrador
+  por WhatsApp desde el inicio de sesión) y bloqueo por intentos fallidos (ver §7).
 
 ---
 
@@ -99,7 +100,11 @@ La interfaz usa la identidad visual de AccountStore PY: el logo, el amarillo de 
 (`#EDB026`), un inicio de sesión oscuro como la pantalla de PIN de la app y tarjetas blancas sobre
 fondo claro. La ventana abre maximizada y se adapta a pantallas chicas.
 
-1. **Inicio de sesión:** usuario y contraseña. Si son incorrectos muestra un mensaje y no deja pasar.
+1. **Inicio de sesión:** fondo negro con textura y tarjeta con esquinas redondeadas, como la pantalla
+   de PIN de la app. Pide usuario y contraseña, con un ojo para ver u ocultar la contraseña. Si los
+   datos son incorrectos, muestra el error en rojo dentro de la tarjeta y no deja pasar. El enlace
+   *"¿Olvidó su contraseña? Pídasela al administrador"* abre WhatsApp con el administrador y deja el
+   mensaje ya escrito, igual que *"Pedíselo al administrador"* en la app.
 
    ![Inicio de sesión](img/01_login.png)
 
@@ -356,6 +361,7 @@ accountstore_escritorio/
 │   ├── app.py              #   navegación entre login y ventana principal
 │   ├── login.py, principal.py, suscripciones.py, clientes.py, cuentas.py, usuarios.py
 │   ├── comun.py            #   colores de la marca, estilos, tablas y manejo seguro de errores
+│   ├── widgets.py          #   campos y botones redondeados y fondo con textura (Canvas)
 │   └── recursos/           #   logo e ícono de AccountStore PY
 ├── logica/                 # CAPA DE LÓGICA: reglas, validaciones, permisos y seguridad
 │   ├── gestor.py           #   operaciones del sistema (vender, renovar, dar de baja…)

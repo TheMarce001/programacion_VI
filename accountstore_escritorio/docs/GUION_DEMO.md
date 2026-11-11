@@ -29,7 +29,9 @@ Con el [INFORME](INFORME.md) abierto:
 
 ## Parte 2 — Sesión y seguridad (1,5 min) · indicadores 5.2 y 4.1
 
-4. `python main.py` → intentar `admin` con una clave equivocada → *"Usuario o contraseña incorrectos"*.
+4. `python main.py` → intentar `admin` con una clave equivocada → aparece en rojo *"Usuario o contraseña
+   incorrectos"* y no deja pasar. Mostrar el ojo para ver la contraseña y mencionar que *"¿Olvidó su
+   contraseña?"* abre WhatsApp con el administrador.
 5. Ingresar como `admin / Admin2026!`. Mostrar el nombre y el rol en el menú lateral.
 6. En la otra terminal: `python inspeccionar_bd.py usuarios` → se ve `clave_hash` y `clave_sal`, **no
    la contraseña**. Explicar PBKDF2 + sal + 600 000 iteraciones (`logica/seguridad.py`).
@@ -95,6 +97,7 @@ estas antes, a mano, y comprobar cada una ejecutando el programa y `python -m un
 | Ventas de hasta 6 meses | `logica/reglas.py` → `MESES_MAXIMOS = 6` |
 | Que "Pagos y vencimientos" sí pueda dar de baja | `logica/permisos.py` → agregar `"dar_de_baja"` al conjunto de `COBRANZA` |
 | Cambiar un mensaje de error | `logica/reglas.py` o `logica/gestor.py`, en el texto del `ErrorValidacion` |
+| Cambiar el WhatsApp del administrador o el mensaje | `interfaz/login.py` → `WHATSAPP_ADMIN` y `pedir_contrasena` |
 | Contraseña de al menos 10 caracteres | `logica/reglas.py` → `validar_clave_nueva`: `if len(clave) < 10` |
 | Mostrar el monto total en el historial | ya existe en `interfaz/suscripciones.py` → `VentanaHistorial` (`sum(...)`) |
 | Agregar una columna a la lista | `interfaz/suscripciones.py` → `COLUMNAS` y la tupla de valores en `actualizar()` |
